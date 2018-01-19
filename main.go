@@ -20,10 +20,41 @@ type coinWheel struct {
 	background, active *ui.List
 }
 
-func NewCoinWheel(n *windowNode) *coinWheel {
+type coinStats struct {
+	node  *windowNode
+	panel *ui.List
+}
+
+func NewCoinStats(n *windowNode) *coinStats {
+	panel := ui.NewList()
+	panel.Height = 6
+	panel.Width = 30
+	panel.X = 10
+	panel.Y = 34
+
+	return &coinStats{node: n, panel: panel}
+}
+
+func (p *coinStats) panelCoinStats() []string {
+	c := p.node.coin
+	items := make([]string, 0)
+	items = append(items, c.Name+"("+c.Symbol+")")
+	items = append(items, "status: "+c.Status)
+	items = append(items, "rate: ")
+
+	return items
+}
+
+func (p *coinStats) Buffer() ui.Buffer {
+	p.panel.Items = p.panelCoinStats()
+	return p.panel.Buffer()
+}
+
+func NewCoinWheel(n *windowNode, height int) *coinWheel {
+	// TODO: clean up height calculations
 	back := ui.NewList()
-	back.Items = n.windowStart(7).windowStrings(7)
-	back.Height = 11
+	back.Items = n.windowStart(height).windowStrings(height)
+	back.Height = height + 4 // height + activeSize(3) + border(2)
 	back.Width = 20
 	back.X = 30
 	back.Y = 20
@@ -33,7 +64,7 @@ func NewCoinWheel(n *windowNode) *coinWheel {
 	active.Width = 20
 	active.Height = 3
 	active.X = 30
-	active.Y = 24
+	active.Y = 20 + (height / 2) + 1
 	active.ItemFgColor = ui.ColorRed
 
 	return &coinWheel{active: active, background: back, node: n}
@@ -105,6 +136,7 @@ func (n *windowNode) windowStrings(size int) []string {
 func activeCoins() ([]ss.Coin, error) {
 	coins, err := ss.CoinsAsList()
 	if err != nil {
+		coins = append(coins, ss.Coin{Name: "Unable to contact shapeshift"})
 		return coins, err
 	}
 	active := make([]ss.Coin, 0)
@@ -185,29 +217,13 @@ func main() {
 
 	n := initWindow(coins)
 	//start := n.windowStart(5)
-	wheel := NewCoinWheel(n)
-	recWheel := NewCoinWheel(n)
+	wheel := NewCoinWheel(n, 7)
+	recWheel := NewCoinWheel(n, 7)
 	recWheel.active.X = 50
 	recWheel.background.X = 50
 	recWheel.active.ItemFgColor = ui.ColorGreen
+	stats := NewCoinStats(n)
 
-	/*
-		numItems := 7
-		list := ui.NewList()
-		list.Items = start.windowStrings(numItems)
-		list.Height = 11
-		list.Width = 20
-		list.X = 30
-		list.Y = 20
-
-		lc := ui.NewList()
-		lc.Items = []string{n.coin.Name}
-		lc.Width = 20
-		lc.Height = 3
-		lc.X = 30
-		lc.Y = 24
-		lc.ItemFgColor = ui.ColorRed
-	*/
 	p := ui.NewPar(SHAPESHIFT)
 	p.Height = 10
 	p.Width = 100
@@ -216,28 +232,22 @@ func main() {
 	p.BorderFg = ui.ColorWhite
 
 	draw := func(t int) {
-		//list.Items = n.windowStart(numItems).windowStrings(numItems)
-		//lc.Items = []string{n.coin.Name}
-		ui.Render(p)
+		ui.Render(p, stats)
 		ui.Render(wheel.Buffers()...)
 		ui.Render(recWheel.Buffers()...)
 	}
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		ui.StopLoop()
 	})
-	//ui.Render(p, list)
-	//ui.Handle("/timer/1s", func(e ui.Event) {
-	//t := e.Data.(ui.EvtTimer)
-	////n = n.next
-	//draw(int(t.Count))
-	//})
 	ui.Handle("/sys/kbd/<up>", func(e ui.Event) {
 		wheel.Prev()
 		recWheel.Next()
+		stats.node = wheel.node
 		draw(0)
 	})
 	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
 		wheel.Next()
+		stats.node = wheel.node
 		recWheel.Prev()
 		draw(0)
 	})
