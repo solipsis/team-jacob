@@ -15,14 +15,45 @@ type windowNode struct {
 	coin       *ss.Coin
 }
 
-type circularList interface {
-	next() circularList
-	prev() circularList
+type coinWheel struct {
+	node               *windowNode
+	background, active *ui.List
 }
 
-// TODO: implement termui.Bufferer
-type coinWheel struct {
-	circularList
+func NewCoinWheel(n *windowNode) *coinWheel {
+	back := ui.NewList()
+	back.Items = n.windowStart(7).windowStrings(7)
+	back.Height = 11
+	back.Width = 20
+	back.X = 30
+	back.Y = 20
+
+	active := ui.NewList()
+	active.Items = []string{n.coin.Name}
+	active.Width = 20
+	active.Height = 3
+	active.X = 30
+	active.Y = 24
+	active.ItemFgColor = ui.ColorRed
+
+	return &coinWheel{active: active, background: back, node: n}
+}
+
+// We always want to render the background before the active item
+func (w *coinWheel) Buffers() []ui.Bufferer {
+	return []ui.Bufferer{w.background, w.active}
+}
+
+func (w *coinWheel) Next() {
+	w.node = w.node.next
+	w.background.Items = w.node.windowStart(7).windowStrings(7)
+	w.active.Items = []string{w.node.coin.Name}
+}
+
+func (w *coinWheel) Prev() {
+	w.node = w.node.prev
+	w.background.Items = w.node.windowStart(7).windowStrings(7)
+	w.active.Items = []string{w.node.coin.Name}
 }
 
 /*
@@ -153,26 +184,30 @@ func main() {
 	*/
 
 	n := initWindow(coins)
-	start := n.windowStart(5)
-	//fmt.Println("START:", start)
-	//fmt.Println(start.windowStrings(5))
+	//start := n.windowStart(5)
+	wheel := NewCoinWheel(n)
+	recWheel := NewCoinWheel(n)
+	recWheel.active.X = 50
+	recWheel.background.X = 50
+	recWheel.active.ItemFgColor = ui.ColorGreen
 
-	numItems := 7
-	list := ui.NewList()
-	list.Items = start.windowStrings(numItems)
-	list.Height = 11
-	list.Width = 20
-	list.X = 30
-	list.Y = 20
+	/*
+		numItems := 7
+		list := ui.NewList()
+		list.Items = start.windowStrings(numItems)
+		list.Height = 11
+		list.Width = 20
+		list.X = 30
+		list.Y = 20
 
-	lc := ui.NewList()
-	lc.Items = []string{n.coin.Name}
-	lc.Width = 20
-	lc.Height = 3
-	lc.X = 30
-	lc.Y = 24
-	lc.ItemFgColor = ui.ColorRed
-
+		lc := ui.NewList()
+		lc.Items = []string{n.coin.Name}
+		lc.Width = 20
+		lc.Height = 3
+		lc.X = 30
+		lc.Y = 24
+		lc.ItemFgColor = ui.ColorRed
+	*/
 	p := ui.NewPar(SHAPESHIFT)
 	p.Height = 10
 	p.Width = 100
@@ -181,9 +216,11 @@ func main() {
 	p.BorderFg = ui.ColorWhite
 
 	draw := func(t int) {
-		list.Items = n.windowStart(numItems).windowStrings(numItems)
-		lc.Items = []string{n.coin.Name}
-		ui.Render(p, list, lc)
+		//list.Items = n.windowStart(numItems).windowStrings(numItems)
+		//lc.Items = []string{n.coin.Name}
+		ui.Render(p)
+		ui.Render(wheel.Buffers()...)
+		ui.Render(recWheel.Buffers()...)
 	}
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		ui.StopLoop()
@@ -195,11 +232,13 @@ func main() {
 	//draw(int(t.Count))
 	//})
 	ui.Handle("/sys/kbd/<up>", func(e ui.Event) {
-		n = n.prev
+		wheel.Prev()
+		recWheel.Next()
 		draw(0)
 	})
 	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
-		n = n.next
+		wheel.Next()
+		recWheel.Prev()
 		draw(0)
 	})
 	draw(0)
