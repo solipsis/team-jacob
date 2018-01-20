@@ -15,11 +15,6 @@ type windowNode struct {
 	coin       *ss.Coin
 }
 
-type coinWheel struct {
-	node               *windowNode
-	background, active *ui.List
-}
-
 type coinStats struct {
 	node  *windowNode
 	panel *ui.List
@@ -50,87 +45,27 @@ func (p *coinStats) Buffer() ui.Buffer {
 	return p.panel.Buffer()
 }
 
-func NewCoinWheel(n *windowNode, height int) *coinWheel {
-	// TODO: clean up height calculations
-	back := ui.NewList()
-	back.Items = n.windowStart(height).windowStrings(height)
-	back.Height = height + 4 // height + activeSize(3) + border(2)
-	back.Width = 20
-	back.X = 30
-	back.Y = 20
-
-	active := ui.NewList()
-	active.Items = []string{n.coin.Name}
-	active.Width = 20
-	active.Height = 3
-	active.X = 30
-	active.Y = 20 + (height / 2) + 1
-	active.ItemFgColor = ui.ColorRed
-
-	return &coinWheel{active: active, background: back, node: n}
-}
-
-// We always want to render the background before the active item
-func (w *coinWheel) Buffers() []ui.Bufferer {
-	return []ui.Bufferer{w.background, w.active}
-}
-
-func (w *coinWheel) Next() {
-	w.node = w.node.next
-	w.background.Items = w.node.windowStart(7).windowStrings(7)
-	w.active.Items = []string{w.node.coin.Name}
-}
-
-func (w *coinWheel) Prev() {
-	w.node = w.node.prev
-	w.background.Items = w.node.windowStart(7).windowStrings(7)
-	w.active.Items = []string{w.node.coin.Name}
-}
-
-/*
-func (n *windowNode) window(size int) []*windowNode {
-	target := size / 2
-	window := make([]*windowNode, 0)
-	// walk list backward till we are half the target size
-	for i := target; i > 0; i-- {
-		n = n.prev
-	}
-	// walk forward appending all nodes
-	for i := 0; i < size; i++ {
-		window = append(window, n)
-		n = n.next
-	}
-	return window
-}
-*/
-
-func (n *windowNode) windowStart(size int) *windowNode {
-	target := size / 2
-	start := n
-	// walk list backward till we are half the target size
-	for i := target; i > 0; i-- {
+// TODO: decide if i want dupes in the list if less than range size
+func (n *windowNode) selection(back, forward int) []*windowNode {
+	// walk the starting pointer back and ending pointer forward
+	start, end := n, n
+	for ; back > 0; back-- {
 		start = start.prev
 	}
-
-	return start
-}
-
-func (n *windowNode) windowStrings(size int) []string {
-	ptr := n
-	strs := make([]string, 0)
-	mid := size / 2 // TODO: fix for non odd
-	for i := 0; i < size; i++ {
-		if i == mid+1 {
-			strs = append(strs, "")
-		}
-		strs = append(strs, ptr.coin.Name)
-		if i == mid-1 {
-			strs = append(strs, "")
-		}
-
-		ptr = ptr.next
+	for ; forward > 0; forward-- {
+		end = end.next
 	}
-	return strs
+
+	// append nodes until after we append the end node
+	arr := make([]*windowNode, 0)
+	for {
+		arr = append(arr, start)
+		if start == end {
+			break
+		}
+		start = start.next
+	}
+	return arr
 }
 
 func activeCoins() ([]ss.Coin, error) {
@@ -170,24 +105,6 @@ func initWindow(coins []ss.Coin) *windowNode {
 	return start
 }
 
-/*
-func activeCoins() ([]ss.Coin, error) {
-	coins := make([]ss.Coin, 0)
-	coinResp, err := ss.CoinsAsList()
-	if err != nil {
-		return coins, err
-	}
-
-	val := reflect.ValueOf(coinResp).Elem()
-	for i := 0; i < val.NumField(); i++ {
-		if coin, ok := val.Field(i).Field(0).Interface().(ss.Coin); ok && coin.Status == "available" {
-			coins = append(coins, val.Field(i).Field(0).Interface().(ss.Coin))
-		}
-	}
-	return coins, nil
-}
-*/
-
 func main() {
 
 	coins, err := activeCoins()
@@ -216,7 +133,6 @@ func main() {
 	*/
 
 	n := initWindow(coins)
-	//start := n.windowStart(5)
 	wheel := NewCoinWheel(n, 7)
 	recWheel := NewCoinWheel(n, 7)
 	recWheel.active.X = 50
