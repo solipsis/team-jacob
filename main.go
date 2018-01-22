@@ -20,6 +20,16 @@ type coinStats struct {
 	panel *ui.List
 }
 
+type pairStats struct {
+	dep, rec *windowNode
+	panel    *ui.List
+	pairInfo map[string]ss.MarketInfoResponse
+}
+
+type pairSelector struct {
+	deposit, receive, active *coinWheel
+}
+
 func NewCoinStats(n *windowNode) *coinStats {
 	panel := ui.NewList()
 	panel.Height = 6
@@ -43,6 +53,19 @@ func (p *coinStats) panelCoinStats() []string {
 func (p *coinStats) Buffer() ui.Buffer {
 	p.panel.Items = p.panelCoinStats()
 	return p.panel.Buffer()
+}
+
+func (p *pairStats) statsStrings() []string {
+	key := p.dep.coin.Name + "_" + p.rec.coin.Name
+	info, ok := p.pairInfo[key]
+
+	stats := make([]string, 0)
+	if !ok {
+		stats = append(stats, "This pair is not available")
+		return stats
+	}
+	fmt.Println(info)
+	return stats
 }
 
 // TODO: decide if i want dupes in the list if less than range size
@@ -83,7 +106,7 @@ func activeCoins() ([]ss.Coin, error) {
 	sort.Slice(coins, func(i, j int) bool {
 		return strings.ToLower(coins[i].Name) < strings.ToLower(coins[j].Name)
 	})
-	return coins, nil
+	return active, nil
 }
 
 func initWindow(coins []ss.Coin) *windowNode {
@@ -119,18 +142,23 @@ func main() {
 		recieveCoins = append(recieveCoins, c.Name)
 	}
 
+	rates, err := ss.MarketInfo()
+	if err != nil {
+		fmt.Println(err)
+	}
+	for _, v := range rates {
+		fmt.Println("rate: ", v.Rate)
+	}
+
+	m := make(map[string]ss.MarketInfoResponse)
+	for _, v := range rates {
+		m[v.Pair] = v
+	}
+
 	if err := ui.Init(); err != nil {
 		panic(err)
 	}
 	defer ui.Close()
-	/*
-		list := ui.NewList()
-		list.Items = depositCoins
-		list.Height = 10
-		list.Width = 20
-		list.X = 30
-		list.Y = 20
-	*/
 
 	n := initWindow(coins)
 	wheel := NewCoinWheel(n, 7)
@@ -139,6 +167,7 @@ func main() {
 	recWheel.background.X = 50
 	recWheel.active.ItemFgColor = ui.ColorGreen
 	stats := NewCoinStats(n)
+	pair := &pairSelector{wheel, recWheel, wheel}
 
 	p := ui.NewPar(SHAPESHIFT)
 	p.Height = 10
@@ -147,8 +176,49 @@ func main() {
 	p.BorderLabel = "Butt"
 	p.BorderFg = ui.ColorWhite
 
+	max := ui.NewPar("1.00345 BTC")
+	max.Height = 4
+	max.Width = 20
+	max.BorderLabel = "Deposit Max"
+	max.X = 13
+	max.Y = 13
+
+	min := ui.NewPar(".000234 BTC")
+	min.Height = 3
+	min.Width = 20
+	min.BorderLabel = "Min Deposit"
+	min.BorderLabelFg = ui.ColorRed
+	min.X = 33
+	min.Y = 13
+
+	rate := ui.NewPar("1 BTC = 10.2032 ETH")
+	rate.Height = 3
+	rate.Width = 30
+	rate.BorderLabel = "Rate"
+	rate.BorderLabelFg = ui.ColorYellow
+	rate.X = 53
+	rate.Y = 13
+
+	/*
+		data := [][]string{
+			{"Deposit Min", "Deposit Max", "Miner Fee", "Rate"},
+			{"Some Item #1", "AAA", "123", "CCCCC"},
+			{"Some Item #2", "BBB", "456", "DDDDD"},
+		}
+		table := ui.NewTable()
+		table.Rows = data // type [][]string
+		table.FgColor = ui.ColorWhite
+		table.BgColor = ui.ColorDefault
+		table.Height = 7
+		table.Width = 62
+		table.Y = 13
+		table.X = 20
+		table.Border = true
+	*/
+
 	draw := func(t int) {
-		ui.Render(p, stats)
+		//pair.active.background.BorderBg = ui.ColorMagenta
+		ui.Render(p, stats, max, min, rate)
 		ui.Render(wheel.Buffers()...)
 		ui.Render(recWheel.Buffers()...)
 	}
@@ -156,15 +226,35 @@ func main() {
 		ui.StopLoop()
 	})
 	ui.Handle("/sys/kbd/<up>", func(e ui.Event) {
-		wheel.Prev()
-		recWheel.Next()
+		pair.active.Prev()
+		//recWheel.Next()
 		stats.node = wheel.node
 		draw(0)
 	})
+	ui.Handle("/sys/kbd/<left>", func(e ui.Event) {
+		pair.active.background.BorderFg = ui.ColorWhite
+		pair.active = pair.deposit
+		pair.active.background.BorderFg = ui.ColorCyan
+	})
+	ui.Handle("/sys/kbd/<right>", func(e ui.Event) {
+		pair.active.background.BorderFg = ui.ColorWhite
+		pair.active = pair.receive
+		pair.active.background.BorderFg = ui.ColorCyan
+	})
+
 	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
-		wheel.Next()
+		pair.active.Next()
 		stats.node = wheel.node
-		recWheel.Prev()
+		//recWheel.Prev()
+		info, ok := m[wheel.node.coin.Symbol+"_"+recWheel.node.coin.Symbol]
+		if ok {
+			max.Text = fmt.Sprintf("%f", info.Limit)
+			min.Text = fmt.Sprintf("%f", info.Min)
+			rate.Text = fmt.Sprintf("1 %s = %f %s", wheel.node.coin.Symbol, info.Rate, recWheel.node.coin.Symbol)
+			//	fmt.Println(info.Rate)
+		} else {
+			max.Text = "Pair unavailable"
+		}
 		draw(0)
 	})
 	draw(0)
