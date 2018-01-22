@@ -30,6 +30,16 @@ type pairSelector struct {
 	deposit, receive, active *coinWheel
 }
 
+func NewPairSelector(n *windowNode) *pairSelector {
+	dep := NewCoinWheel(n, 7)
+	rec := NewCoinWheel(n.next, 7)
+	rec.active.X = 50
+	rec.background.X = 50
+	rec.active.ItemFgColor = ui.ColorGreen
+
+	return &pairSelector{dep, rec, dep}
+}
+
 func NewCoinStats(n *windowNode) *coinStats {
 	panel := ui.NewList()
 	panel.Height = 6
@@ -103,8 +113,9 @@ func activeCoins() ([]ss.Coin, error) {
 			active = append(active, c)
 		}
 	}
-	sort.Slice(coins, func(i, j int) bool {
-		return strings.ToLower(coins[i].Name) < strings.ToLower(coins[j].Name)
+
+	sort.Slice(active, func(i, j int) bool {
+		return strings.ToLower(active[i].Name) < strings.ToLower(active[j].Name)
 	})
 	return active, nil
 }
@@ -146,9 +157,9 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	for _, v := range rates {
-		fmt.Println("rate: ", v.Rate)
-	}
+	//for _, v := range rates {
+	//fmt.Println("rate: ", v.Rate)
+	//}
 
 	m := make(map[string]ss.MarketInfoResponse)
 	for _, v := range rates {
@@ -161,13 +172,14 @@ func main() {
 	defer ui.Close()
 
 	n := initWindow(coins)
-	wheel := NewCoinWheel(n, 7)
-	recWheel := NewCoinWheel(n, 7)
-	recWheel.active.X = 50
-	recWheel.background.X = 50
-	recWheel.active.ItemFgColor = ui.ColorGreen
+	//wheel := NewCoinWheel(n, 7)
+	//recWheel := NewCoinWheel(n, 7)
+	//recWheel.active.X = 50
+	//recWheel.background.X = 50
+	//recWheel.active.ItemFgColor = ui.ColorGreen
+	pair := NewPairSelector(n)
 	stats := NewCoinStats(n)
-	pair := &pairSelector{wheel, recWheel, wheel}
+	//pair := &pairSelector{wheel, recWheel, wheel}
 
 	p := ui.NewPar(SHAPESHIFT)
 	p.Height = 10
@@ -219,8 +231,8 @@ func main() {
 	draw := func(t int) {
 		//pair.active.background.BorderBg = ui.ColorMagenta
 		ui.Render(p, stats, max, min, rate)
-		ui.Render(wheel.Buffers()...)
-		ui.Render(recWheel.Buffers()...)
+		ui.Render(pair.deposit.Buffers()...)
+		ui.Render(pair.receive.Buffers()...)
 	}
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		ui.StopLoop()
@@ -228,7 +240,7 @@ func main() {
 	ui.Handle("/sys/kbd/<up>", func(e ui.Event) {
 		pair.active.Prev()
 		//recWheel.Next()
-		stats.node = wheel.node
+		stats.node = pair.deposit.node
 		draw(0)
 	})
 	ui.Handle("/sys/kbd/<left>", func(e ui.Event) {
@@ -244,13 +256,13 @@ func main() {
 
 	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
 		pair.active.Next()
-		stats.node = wheel.node
+		stats.node = pair.deposit.node
 		//recWheel.Prev()
-		info, ok := m[wheel.node.coin.Symbol+"_"+recWheel.node.coin.Symbol]
+		info, ok := m[pair.deposit.node.coin.Symbol+"_"+pair.receive.node.coin.Symbol]
 		if ok {
 			max.Text = fmt.Sprintf("%f", info.Limit)
 			min.Text = fmt.Sprintf("%f", info.Min)
-			rate.Text = fmt.Sprintf("1 %s = %f %s", wheel.node.coin.Symbol, info.Rate, recWheel.node.coin.Symbol)
+			rate.Text = fmt.Sprintf("1 %s = %f %s", pair.deposit.node.coin.Symbol, info.Rate, pair.receive.node.coin.Symbol)
 			//	fmt.Println(info.Rate)
 		} else {
 			max.Text = "Pair unavailable"
