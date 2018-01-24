@@ -21,9 +21,9 @@ type coinStats struct {
 }
 
 type pairStats struct {
-	dep, rec *windowNode
-	panel    *ui.List
-	pairInfo map[string]ss.MarketInfoResponse
+	dep, rec            *ss.Coin
+	min, max, rate, fee *ui.Par
+	marketInfo          map[string]ss.MarketInfoResponse
 }
 
 type pairSelector struct {
@@ -65,9 +65,46 @@ func (p *coinStats) Buffer() ui.Buffer {
 	return p.panel.Buffer()
 }
 
+// TODO: marketInfoResponse to interface???
+// info pane should probably be freed of ss dependencies.
+func NewPairStats(dep, rec *ss.Coin, m map[string]ss.MarketInfoResponse) *pairStats {
+	stats := pairStats{dep: dep, rec: rec}
+	stats.min = uiPar("B", "Deposit Min", 13, 13, 20, 3)
+	stats.min.BorderFg = ui.ColorBlue
+	stats.max = uiPar("A", "Deposit Max", 33, 13, 20, 3)
+	stats.max.BorderFg = ui.ColorMagenta
+	stats.rate = uiPar("C", "Rate", 53, 13, 25, 3)
+	stats.rate.BorderFg = ui.ColorYellow
+	stats.fee = uiPar("D", "Miner Fee", 78, 13, 20, 3)
+	stats.fee.BorderFg = ui.ColorRed
+	stats.marketInfo = m
+
+	return &stats
+}
+
+func (p *pairStats) Buffers() []ui.Bufferer {
+	info := p.marketInfo[p.dep.Symbol+"_"+p.rec.Symbol]
+	p.max.Text = fmt.Sprintf("%f %s", info.Limit, p.dep.Symbol)
+	p.min.Text = fmt.Sprintf("%f %s", info.Min, p.dep.Symbol)
+	p.rate.Text = fmt.Sprintf("1 %s = %f %s", p.dep.Symbol, info.Rate, p.rec.Symbol)
+	p.fee.Text = fmt.Sprintf("%f %s", info.MinerFee, p.rec.Symbol)
+	return []ui.Bufferer{p.min, p.max, p.rate, p.fee}
+}
+
+func uiPar(text, bLabel string, x, y, width, height int) *ui.Par {
+	par := ui.NewPar(text)
+	par.BorderLabel = bLabel
+	par.X = x
+	par.Y = y
+	par.Width = width
+	par.Height = height
+
+	return par
+}
+
 func (p *pairStats) statsStrings() []string {
-	key := p.dep.coin.Name + "_" + p.rec.coin.Name
-	info, ok := p.pairInfo[key]
+	key := p.dep.Symbol + "_" + p.rec.Symbol
+	info, ok := p.marketInfo[key]
 
 	stats := make([]string, 0)
 	if !ok {
@@ -157,9 +194,6 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	//for _, v := range rates {
-	//fmt.Println("rate: ", v.Rate)
-	//}
 
 	m := make(map[string]ss.MarketInfoResponse)
 	for _, v := range rates {
@@ -172,14 +206,8 @@ func main() {
 	defer ui.Close()
 
 	n := initWindow(coins)
-	//wheel := NewCoinWheel(n, 7)
-	//recWheel := NewCoinWheel(n, 7)
-	//recWheel.active.X = 50
-	//recWheel.background.X = 50
-	//recWheel.active.ItemFgColor = ui.ColorGreen
 	pair := NewPairSelector(n)
 	stats := NewCoinStats(n)
-	//pair := &pairSelector{wheel, recWheel, wheel}
 
 	p := ui.NewPar(SHAPESHIFT)
 	p.Height = 10
@@ -188,51 +216,15 @@ func main() {
 	p.BorderLabel = "Butt"
 	p.BorderFg = ui.ColorWhite
 
-	max := ui.NewPar("1.00345 BTC")
-	max.Height = 4
-	max.Width = 20
-	max.BorderLabel = "Deposit Max"
-	max.X = 13
-	max.Y = 13
-
-	min := ui.NewPar(".000234 BTC")
-	min.Height = 3
-	min.Width = 20
-	min.BorderLabel = "Min Deposit"
-	min.BorderLabelFg = ui.ColorRed
-	min.X = 33
-	min.Y = 13
-
-	rate := ui.NewPar("1 BTC = 10.2032 ETH")
-	rate.Height = 3
-	rate.Width = 30
-	rate.BorderLabel = "Rate"
-	rate.BorderLabelFg = ui.ColorYellow
-	rate.X = 53
-	rate.Y = 13
-
-	/*
-		data := [][]string{
-			{"Deposit Min", "Deposit Max", "Miner Fee", "Rate"},
-			{"Some Item #1", "AAA", "123", "CCCCC"},
-			{"Some Item #2", "BBB", "456", "DDDDD"},
-		}
-		table := ui.NewTable()
-		table.Rows = data // type [][]string
-		table.FgColor = ui.ColorWhite
-		table.BgColor = ui.ColorDefault
-		table.Height = 7
-		table.Width = 62
-		table.Y = 13
-		table.X = 20
-		table.Border = true
-	*/
+	pairStats := NewPairStats(pair.deposit.node.coin, pair.receive.node.coin, m)
 
 	draw := func(t int) {
 		//pair.active.background.BorderBg = ui.ColorMagenta
-		ui.Render(p, stats, max, min, rate)
+		//ui.Render(p, stats, max, min, rate)
+		ui.Render(p)
 		ui.Render(pair.deposit.Buffers()...)
 		ui.Render(pair.receive.Buffers()...)
+		ui.Render(pairStats.Buffers()...)
 	}
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		ui.StopLoop()
@@ -241,32 +233,37 @@ func main() {
 		pair.active.Prev()
 		//recWheel.Next()
 		stats.node = pair.deposit.node
+		pairStats.dep = pair.deposit.node.coin
+		pairStats.rec = pair.receive.node.coin
+
 		draw(0)
 	})
 	ui.Handle("/sys/kbd/<left>", func(e ui.Event) {
 		pair.active.background.BorderFg = ui.ColorWhite
 		pair.active = pair.deposit
-		pair.active.background.BorderFg = ui.ColorCyan
+		pair.active.background.BorderFg = ui.ColorYellow
 	})
 	ui.Handle("/sys/kbd/<right>", func(e ui.Event) {
 		pair.active.background.BorderFg = ui.ColorWhite
 		pair.active = pair.receive
-		pair.active.background.BorderFg = ui.ColorCyan
+		pair.active.background.BorderFg = ui.ColorYellow
 	})
 
 	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
 		pair.active.Next()
 		stats.node = pair.deposit.node
+		pairStats.dep = pair.deposit.node.coin
+		pairStats.rec = pair.receive.node.coin
 		//recWheel.Prev()
-		info, ok := m[pair.deposit.node.coin.Symbol+"_"+pair.receive.node.coin.Symbol]
-		if ok {
-			max.Text = fmt.Sprintf("%f", info.Limit)
-			min.Text = fmt.Sprintf("%f", info.Min)
-			rate.Text = fmt.Sprintf("1 %s = %f %s", pair.deposit.node.coin.Symbol, info.Rate, pair.receive.node.coin.Symbol)
-			//	fmt.Println(info.Rate)
-		} else {
-			max.Text = "Pair unavailable"
-		}
+		//info, ok := m[pair.deposit.node.coin.Symbol+"_"+pair.receive.node.coin.Symbol]
+		//if ok {
+		//max.Text = fmt.Sprintf("%f", info.Limit)
+		//min.Text = fmt.Sprintf("%f", info.Min)
+		//rate.Text = fmt.Sprintf("1 %s = %f %s", pair.deposit.node.coin.Symbol, info.Rate, pair.receive.node.coin.Symbol)
+		//	fmt.Println(info.Rate)
+		//} else {
+		//max.Text = "Pair unavailable"
+		//}
 		draw(0)
 	})
 	draw(0)
