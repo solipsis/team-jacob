@@ -1,33 +1,43 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"sort"
 	"strings"
 
 	ui "github.com/gizak/termui"
+	"github.com/mdp/qrterminal"
 	ss "github.com/solipsis/shapeshift"
 )
 
+type Coin struct {
+	Name      string
+	Symbol    string
+	Available bool
+}
+
+func toCoin(sc ss.Coin) *Coin {
+	return &Coin{
+		Name:      sc.Name,
+		Symbol:    sc.Symbol,
+		Available: sc.Status == "Available",
+	}
+}
+
 type windowNode struct {
 	next, prev *windowNode
-	coin       *ss.Coin
-}
-
-type coinStats struct {
-	node  *windowNode
-	panel *ui.List
-}
-
-type pairStats struct {
-	dep, rec            *ss.Coin
-	min, max, rate, fee *ui.Par
-	marketInfo          map[string]ss.MarketInfoResponse
+	coin       *Coin
 }
 
 type pairSelector struct {
 	deposit, receive, active *coinWheel
+}
+
+func wipe() {
+	fmt.Printf("\003[0;0H]")
+	fmt.Println(strings.Repeat("\n", 100))
 }
 
 func NewPairSelector(n *windowNode) *pairSelector {
@@ -38,81 +48,6 @@ func NewPairSelector(n *windowNode) *pairSelector {
 	rec.active.ItemFgColor = ui.ColorGreen
 
 	return &pairSelector{dep, rec, dep}
-}
-
-func NewCoinStats(n *windowNode) *coinStats {
-	panel := ui.NewList()
-	panel.Height = 6
-	panel.Width = 30
-	panel.X = 10
-	panel.Y = 34
-
-	return &coinStats{node: n, panel: panel}
-}
-
-func (p *coinStats) panelCoinStats() []string {
-	c := p.node.coin
-	items := make([]string, 0)
-	items = append(items, c.Name+"("+c.Symbol+")")
-	items = append(items, "status: "+c.Status)
-	items = append(items, "rate: ")
-
-	return items
-}
-
-func (p *coinStats) Buffer() ui.Buffer {
-	p.panel.Items = p.panelCoinStats()
-	return p.panel.Buffer()
-}
-
-// TODO: marketInfoResponse to interface???
-// info pane should probably be freed of ss dependencies.
-func NewPairStats(dep, rec *ss.Coin, m map[string]ss.MarketInfoResponse) *pairStats {
-	stats := pairStats{dep: dep, rec: rec}
-	stats.min = uiPar("B", "Deposit Min", 13, 13, 20, 3)
-	stats.min.BorderFg = ui.ColorBlue
-	stats.max = uiPar("A", "Deposit Max", 33, 13, 20, 3)
-	stats.max.BorderFg = ui.ColorMagenta
-	stats.rate = uiPar("C", "Rate", 53, 13, 25, 3)
-	stats.rate.BorderFg = ui.ColorYellow
-	stats.fee = uiPar("D", "Miner Fee", 78, 13, 20, 3)
-	stats.fee.BorderFg = ui.ColorRed
-	stats.marketInfo = m
-
-	return &stats
-}
-
-func (p *pairStats) Buffers() []ui.Bufferer {
-	info := p.marketInfo[p.dep.Symbol+"_"+p.rec.Symbol]
-	p.max.Text = fmt.Sprintf("%f %s", info.Limit, p.dep.Symbol)
-	p.min.Text = fmt.Sprintf("%f %s", info.Min, p.dep.Symbol)
-	p.rate.Text = fmt.Sprintf("1 %s = %f %s", p.dep.Symbol, info.Rate, p.rec.Symbol)
-	p.fee.Text = fmt.Sprintf("%f %s", info.MinerFee, p.rec.Symbol)
-	return []ui.Bufferer{p.min, p.max, p.rate, p.fee}
-}
-
-func uiPar(text, bLabel string, x, y, width, height int) *ui.Par {
-	par := ui.NewPar(text)
-	par.BorderLabel = bLabel
-	par.X = x
-	par.Y = y
-	par.Width = width
-	par.Height = height
-
-	return par
-}
-
-func (p *pairStats) statsStrings() []string {
-	key := p.dep.Symbol + "_" + p.rec.Symbol
-	info, ok := p.marketInfo[key]
-
-	stats := make([]string, 0)
-	if !ok {
-		stats = append(stats, "This pair is not available")
-		return stats
-	}
-	fmt.Println(info)
-	return stats
 }
 
 // TODO: decide if i want dupes in the list if less than range size
@@ -138,16 +73,25 @@ func (n *windowNode) selection(back, forward int) []*windowNode {
 	return arr
 }
 
-func activeCoins() ([]ss.Coin, error) {
-	coins, err := ss.CoinsAsList()
+func newShift() (*ss.NewTransactionResponse, error) {
+	return &ss.NewTransactionResponse{
+		SendTo:     "0xa6bd216e8e5f463742f37aaab169cabce601835c",
+		SendType:   "ETH",
+		ReturnTo:   "16FdfRFVPUwiKAceRSqgEfn1tmB4sVUmLh",
+		ReturnType: "BTC",
+	}, nil
+}
+
+func activeCoins() ([]*Coin, error) {
+	ssCoins, err := ss.CoinsAsList()
+	active := make([]*Coin, 0)
 	if err != nil {
-		coins = append(coins, ss.Coin{Name: "Unable to contact shapeshift"})
-		return coins, err
+		active = append(active, &Coin{Name: "Unable to contart Shapeshift"})
+		return active, err
 	}
-	active := make([]ss.Coin, 0)
-	for _, c := range coins {
+	for _, c := range ssCoins {
 		if c.Status == "available" {
-			active = append(active, c)
+			active = append(active, toCoin(c))
 		}
 	}
 
@@ -157,15 +101,15 @@ func activeCoins() ([]ss.Coin, error) {
 	return active, nil
 }
 
-func initWindow(coins []ss.Coin) *windowNode {
+func initWindow(coins []*Coin) *windowNode {
 	if len(coins) == 0 {
 		return nil
 	}
 	// TODO: fix edge case of 1 element list
-	start := &windowNode{coin: &coins[0]}
+	start := &windowNode{coin: coins[0]}
 	prev := start
 	for i := 1; i < len(coins); i++ {
-		cur := &coins[i]
+		cur := coins[i]
 		n := &windowNode{coin: cur, prev: prev}
 		prev.next = n
 		prev = n
@@ -174,6 +118,17 @@ func initWindow(coins []ss.Coin) *windowNode {
 	start.prev = prev
 
 	return start
+}
+
+type pairSelectorScreen struct {
+	selector pairSelector
+	stats pairStats
+	marketInfo map[string]ss.MarketInfoResponse
+}
+
+func (*p pairSelectorScreen) Init() {
+	
+	
 }
 
 func main() {
@@ -207,7 +162,6 @@ func main() {
 
 	n := initWindow(coins)
 	pair := NewPairSelector(n)
-	stats := NewCoinStats(n)
 
 	p := ui.NewPar(SHAPESHIFT)
 	p.Height = 10
@@ -217,14 +171,44 @@ func main() {
 	p.BorderFg = ui.ColorWhite
 
 	pairStats := NewPairStats(pair.deposit.node.coin, pair.receive.node.coin, m)
+	buf := new(bytes.Buffer)
+	config := qrterminal.Config{
+		Level:          qrterminal.M,
+		Writer:         buf,
+		BlackChar:      qrterminal.BLACK,
+		WhiteChar:      qrterminal.WHITE,
+		WhiteBlackChar: qrterminal.WHITE_BLACK,
+		BlackWhiteChar: qrterminal.BLACK_WHITE,
+		HalfBlocks:     true,
+		//BlackChar:  qrterminal.WHITE,
+		//WhiteChar:  qrterminal.BLACK,
+	}
+	//	fmt.Println(config)
+	//qrterminal.GenerateWithConfig("butt", config)
+
+	qrterminal.Generate("blah", qrterminal.L, buf)
+	//	fmt.Printf(buf.String())
+	s := fmt.Sprintf("%v", config)
+	qr := ui.NewPar(s)
+	qr.Height = 40
+	qr.Width = 100
+	qr.TextFgColor = ui.ColorDefault
+	qr.TextBgColor = ui.ColorDefault
+	p.BorderLabel = "HELP"
 
 	draw := func(t int) {
 		//pair.active.background.BorderBg = ui.ColorMagenta
 		//ui.Render(p, stats, max, min, rate)
+		//ui.Clear()
+		wipe()
+		ui.Clear()
 		ui.Render(p)
 		ui.Render(pair.deposit.Buffers()...)
 		ui.Render(pair.receive.Buffers()...)
-		ui.Render(pairStats.Buffers()...)
+		//ui.Render(qr)
+		fmt.Printf("\033[10;0H")
+		fmt.Print(buf.String())
+		//ui.Render(pairStats.Buffers()...)
 	}
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		ui.StopLoop()
@@ -232,7 +216,6 @@ func main() {
 	ui.Handle("/sys/kbd/<up>", func(e ui.Event) {
 		pair.active.Prev()
 		//recWheel.Next()
-		stats.node = pair.deposit.node
 		pairStats.dep = pair.deposit.node.coin
 		pairStats.rec = pair.receive.node.coin
 
@@ -251,7 +234,6 @@ func main() {
 
 	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
 		pair.active.Next()
-		stats.node = pair.deposit.node
 		pairStats.dep = pair.deposit.node.coin
 		pairStats.rec = pair.receive.node.coin
 		//recWheel.Prev()
