@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 
@@ -120,48 +119,18 @@ func initWindow(coins []*Coin) *windowNode {
 	return start
 }
 
-type pairSelectorScreen struct {
-	selector pairSelector
-	stats pairStats
-	marketInfo map[string]ss.MarketInfoResponse
-}
-
-func (*p pairSelectorScreen) Init() {
-	
-	
-}
-
 func main() {
-
-	coins, err := activeCoins()
-	if err != nil {
-		log.Println("UNable to contact shapeshift")
-	}
-
-	depositCoins, recieveCoins := make([]string, 0), make([]string, 0)
-
-	for _, c := range coins {
-		depositCoins = append(depositCoins, c.Name)
-		recieveCoins = append(recieveCoins, c.Name)
-	}
-
-	rates, err := ss.MarketInfo()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	m := make(map[string]ss.MarketInfoResponse)
-	for _, v := range rates {
-		m[v.Pair] = v
-	}
+	selectScreen := new(pairSelectorScreen)
+	selectScreen.Init()
 
 	if err := ui.Init(); err != nil {
 		panic(err)
 	}
 	defer ui.Close()
 
-	n := initWindow(coins)
-	pair := NewPairSelector(n)
+	//n := initWindow(coins)
+	//pair := NewPairSelector(n)
+	pair := selectScreen.selector
 
 	p := ui.NewPar(SHAPESHIFT)
 	p.Height = 10
@@ -170,7 +139,7 @@ func main() {
 	p.BorderLabel = "Butt"
 	p.BorderFg = ui.ColorWhite
 
-	pairStats := NewPairStats(pair.deposit.node.coin, pair.receive.node.coin, m)
+	//pairStats := NewPairStats(pair.deposit.node.coin, pair.receive.node.coin, m)
 	buf := new(bytes.Buffer)
 	config := qrterminal.Config{
 		Level:          qrterminal.M,
@@ -216,8 +185,8 @@ func main() {
 	ui.Handle("/sys/kbd/<up>", func(e ui.Event) {
 		pair.active.Prev()
 		//recWheel.Next()
-		pairStats.dep = pair.deposit.node.coin
-		pairStats.rec = pair.receive.node.coin
+		//pairStats.dep = pair.deposit.node.coin
+		//pairStats.rec = pair.receive.node.coin
 
 		draw(0)
 	})
@@ -234,8 +203,8 @@ func main() {
 
 	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
 		pair.active.Next()
-		pairStats.dep = pair.deposit.node.coin
-		pairStats.rec = pair.receive.node.coin
+		//pairStats.dep = pair.deposit.node.coin
+		//pairStats.rec = pair.receive.node.coin
 		//recWheel.Prev()
 		//info, ok := m[pair.deposit.node.coin.Symbol+"_"+pair.receive.node.coin.Symbol]
 		//if ok {
@@ -253,50 +222,6 @@ func main() {
 	ui.Loop()
 	fmt.Println("done")
 }
-
-/*
-func layout(g *gocui.Gui) error {
-
-	maxX, maxY := g.Size()
-	if v, err := g.SetView("hello", maxX/2-50, maxY/2-16, maxX/2+20, maxY/2+16); err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		config := qrterminal.Config{
-			Level:          qrterminal.M,
-			Writer:         v,
-			BlackChar:      qrterminal.BLACK,
-			WhiteChar:      qrterminal.WHITE,
-			WhiteBlackChar: qrterminal.WHITE_BLACK,
-			BlackWhiteChar: qrterminal.BLACK_WHITE,
-			//HalfBlocks:     true,
-			//BlackChar:  qrterminal.WHITE,
-			//WhiteChar:  qrterminal.BLACK,
-		}
-		fmt.Println(config)
-		//		qrterminal.GenerateHalfBlock("hello potatoes", qrterminal.L, v)
-		blue := color.New(color.FgGreen).SprintFunc()
-		fmt.Println(blue("https://github.com/mdp/qrterminal"))
-		qrterminal.GenerateWithConfig(blue("https://github.com/mdp/qrterminal"), config)
-		//qrterminal.Generate("blah", qrterminal.L, v)
-		//		fmt.Fprintln(v, "Hello world!")
-	}
-
-	if v, err := g.SetView("shapeshift", 1, 1, 100, 10); err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		blue := color.New(color.FgGreen).SprintFunc()
-		fmt.Fprintf(v, blue(SHAPESHIFT))
-	}
-
-	return nil
-}
-
-func quit(g *gocui.Gui, v *gocui.View) error {
-	return gocui.ErrQuit
-}
-*/
 
 /*
 const SHAPESHIFT = `
