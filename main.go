@@ -30,46 +30,9 @@ type windowNode struct {
 	coin       *Coin
 }
 
-type pairSelector struct {
-	deposit, receive, active *coinWheel
-}
-
 func wipe() {
 	fmt.Printf("\003[0;0H]")
 	fmt.Println(strings.Repeat("\n", 100))
-}
-
-func NewPairSelector(n *windowNode) *pairSelector {
-	dep := NewCoinWheel(n, 7)
-	rec := NewCoinWheel(n.next, 7)
-	rec.active.X = 50
-	rec.background.X = 50
-	rec.active.ItemFgColor = ui.ColorGreen
-
-	return &pairSelector{dep, rec, dep}
-}
-
-// TODO: decide if i want dupes in the list if less than range size
-func (n *windowNode) selection(back, forward int) []*windowNode {
-	// walk the starting pointer back and ending pointer forward
-	start, end := n, n
-	for ; back > 0; back-- {
-		start = start.prev
-	}
-	for ; forward > 0; forward-- {
-		end = end.next
-	}
-
-	// append nodes until after we append the end node
-	arr := make([]*windowNode, 0)
-	for {
-		arr = append(arr, start)
-		if start == end {
-			break
-		}
-		start = start.next
-	}
-	return arr
 }
 
 func newShift() (*ss.NewTransactionResponse, error) {
@@ -85,7 +48,8 @@ func activeCoins() ([]*Coin, error) {
 	ssCoins, err := ss.CoinsAsList()
 	active := make([]*Coin, 0)
 	if err != nil {
-		active = append(active, &Coin{Name: "Unable to contart Shapeshift"})
+		active = append(active, &Coin{Name: "Unable to contact Shapeshift"})
+		active = append(active, &Coin{Name: "potato"})
 		return active, err
 	}
 	for _, c := range ssCoins {
@@ -120,16 +84,20 @@ func initWindow(coins []*Coin) *windowNode {
 }
 
 func main() {
-	selectScreen := new(pairSelectorScreen)
-	selectScreen.Init()
 
 	if err := ui.Init(); err != nil {
 		panic(err)
 	}
 	defer ui.Close()
+	//defer func() {
+	//if r := recover(); r != nil {
+	//os.Exit(1)
+	//}
+	//}()
 
-	//n := initWindow(coins)
-	//pair := NewPairSelector(n)
+	selectScreen := new(pairSelectorScreen)
+	selectScreen.Init()
+
 	pair := selectScreen.selector
 
 	p := ui.NewPar(SHAPESHIFT)
@@ -166,46 +134,35 @@ func main() {
 	p.BorderLabel = "HELP"
 
 	draw := func(t int) {
-		//pair.active.background.BorderBg = ui.ColorMagenta
-		//ui.Render(p, stats, max, min, rate)
+		//wipe()
 		//ui.Clear()
-		wipe()
-		ui.Clear()
 		ui.Render(p)
-		ui.Render(pair.deposit.Buffers()...)
-		ui.Render(pair.receive.Buffers()...)
-		//ui.Render(qr)
-		fmt.Printf("\033[10;0H")
-		fmt.Print(buf.String())
+		ui.Render(pair.Buffers()...)
+		//fmt.Printf("\033[10;0H")
+		//fmt.Print(buf.String())
 		//ui.Render(pairStats.Buffers()...)
 	}
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		ui.StopLoop()
 	})
 	ui.Handle("/sys/kbd/<up>", func(e ui.Event) {
-		pair.active.Prev()
-		//recWheel.Next()
+		pair.Handle(e.Path)
 		//pairStats.dep = pair.deposit.node.coin
 		//pairStats.rec = pair.receive.node.coin
 
 		draw(0)
 	})
 	ui.Handle("/sys/kbd/<left>", func(e ui.Event) {
-		pair.active.background.BorderFg = ui.ColorWhite
-		pair.active = pair.deposit
-		pair.active.background.BorderFg = ui.ColorYellow
+		pair.Handle(e.Path)
+		draw(0)
 	})
 	ui.Handle("/sys/kbd/<right>", func(e ui.Event) {
-		pair.active.background.BorderFg = ui.ColorWhite
-		pair.active = pair.receive
-		pair.active.background.BorderFg = ui.ColorYellow
+		pair.Handle(e.Path)
+		draw(0)
 	})
 
 	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
-		pair.active.Next()
-		//pairStats.dep = pair.deposit.node.coin
-		//pairStats.rec = pair.receive.node.coin
-		//recWheel.Prev()
+		pair.Handle(e.Path)
 		//info, ok := m[pair.deposit.node.coin.Symbol+"_"+pair.receive.node.coin.Symbol]
 		//if ok {
 		//max.Text = fmt.Sprintf("%f", info.Limit)

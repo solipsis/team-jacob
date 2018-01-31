@@ -64,3 +64,20 @@ func (w *coinWheel) backgroundItems() []string {
 	}
 	return names
 }
+
+// TODO: decide if i want dupes in the list if less than range size
+func (n *windowNode) selection(back, forward int) []*windowNode {
+	// walk the starting pointer back and ending pointer forward
+	start := n
+	for i := 0; i < back; i++ {
+		start = start.prev
+	}
+
+	// append nodes until we have the size we want
+	arr := make([]*windowNode, 0)
+	for len(arr) <= forward+back {
+		arr = append(arr, start)
+		start = start.next
+	}
+	return arr
+}
