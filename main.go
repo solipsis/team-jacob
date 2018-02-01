@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	ui "github.com/gizak/termui"
 	"github.com/mdp/qrterminal"
@@ -23,6 +25,39 @@ func toCoin(sc ss.Coin) *Coin {
 		Symbol:    sc.Symbol,
 		Available: sc.Status == "Available",
 	}
+}
+
+type countdown struct {
+	gauge    *ui.Gauge
+	start    time.Time
+	duration time.Duration
+	//t     time.Ticker
+}
+
+func (c *countdown) draw() {
+	diff := time.Since(c.start)
+	if diff == 0 {
+		c.gauge.Percent = 100
+	} else {
+		c.gauge.Percent = 100 - int((diff*100)/(c.duration))
+	}
+	seconds := int((c.duration - diff) / time.Second)
+	c.gauge.Label = strconv.Itoa(seconds) + "s Remaining"
+}
+
+func NewCountdown(duration int) *countdown {
+	c := new(countdown)
+	//c.t = time.NewTicker(duration)
+	//c.t.Stop
+	c.gauge = ui.NewGauge()
+	c.gauge.Percent = 80
+	c.gauge.Width = 50
+	c.gauge.Height = 5
+	c.gauge.Y = 30
+	c.start = time.Now()
+	c.duration = (time.Second * time.Duration(duration))
+	return c
+
 }
 
 type windowNode struct {
@@ -133,11 +168,15 @@ func main() {
 	qr.TextBgColor = ui.ColorDefault
 	p.BorderLabel = "HELP"
 
+	count := NewCountdown(200)
+
 	draw := func(t int) {
 		//wipe()
 		//ui.Clear()
 		ui.Render(p)
 		ui.Render(pair.Buffers()...)
+		count.draw()
+		ui.Render(count.gauge)
 		//fmt.Printf("\033[10;0H")
 		//fmt.Print(buf.String())
 		//ui.Render(pairStats.Buffers()...)
