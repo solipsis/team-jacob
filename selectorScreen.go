@@ -42,8 +42,8 @@ func (p *pairSelectorScreen) Init() {
 }
 
 func NewPairSelector(n *windowNode) *pairSelector {
-	dep := NewCoinWheel(n, 7)
-	rec := NewCoinWheel(n.next, 7)
+	dep := NewCoinWheel(n, 7, "Deposit")
+	rec := NewCoinWheel(n.next, 7, "Receive")
 	rec.active.X = 50
 	rec.background.X = 50
 	rec.active.ItemFgColor = ui.ColorGreen

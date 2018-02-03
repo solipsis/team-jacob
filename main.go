@@ -1,15 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
-	"time"
 
 	ui "github.com/gizak/termui"
-	"github.com/mdp/qrterminal"
 	ss "github.com/solipsis/shapeshift"
 )
 
@@ -25,39 +21,6 @@ func toCoin(sc ss.Coin) *Coin {
 		Symbol:    sc.Symbol,
 		Available: sc.Status == "Available",
 	}
-}
-
-type countdown struct {
-	gauge    *ui.Gauge
-	start    time.Time
-	duration time.Duration
-	//t     time.Ticker
-}
-
-func (c *countdown) draw() {
-	diff := time.Since(c.start)
-	if diff == 0 {
-		c.gauge.Percent = 100
-	} else {
-		c.gauge.Percent = 100 - int((diff*100)/(c.duration))
-	}
-	seconds := int((c.duration - diff) / time.Second)
-	c.gauge.Label = strconv.Itoa(seconds) + "s Remaining"
-}
-
-func NewCountdown(duration int) *countdown {
-	c := new(countdown)
-	//c.t = time.NewTicker(duration)
-	//c.t.Stop
-	c.gauge = ui.NewGauge()
-	c.gauge.Percent = 80
-	c.gauge.Width = 50
-	c.gauge.Height = 5
-	c.gauge.Y = 30
-	c.start = time.Now()
-	c.duration = (time.Second * time.Duration(duration))
-	return c
-
 }
 
 type windowNode struct {
@@ -124,11 +87,6 @@ func main() {
 		panic(err)
 	}
 	defer ui.Close()
-	//defer func() {
-	//if r := recover(); r != nil {
-	//os.Exit(1)
-	//}
-	//}()
 
 	selectScreen := new(pairSelectorScreen)
 	selectScreen.Init()
@@ -143,43 +101,27 @@ func main() {
 	p.BorderFg = ui.ColorWhite
 
 	//pairStats := NewPairStats(pair.deposit.node.coin, pair.receive.node.coin, m)
-	buf := new(bytes.Buffer)
-	config := qrterminal.Config{
-		Level:          qrterminal.M,
-		Writer:         buf,
-		BlackChar:      qrterminal.BLACK,
-		WhiteChar:      qrterminal.WHITE,
-		WhiteBlackChar: qrterminal.WHITE_BLACK,
-		BlackWhiteChar: qrterminal.BLACK_WHITE,
-		HalfBlocks:     true,
-		//BlackChar:  qrterminal.WHITE,
-		//WhiteChar:  qrterminal.BLACK,
-	}
-	//	fmt.Println(config)
-	//qrterminal.GenerateWithConfig("butt", config)
 
-	qrterminal.Generate("blah", qrterminal.L, buf)
-	//	fmt.Printf(buf.String())
-	s := fmt.Sprintf("%v", config)
-	qr := ui.NewPar(s)
-	qr.Height = 40
-	qr.Width = 100
-	qr.TextFgColor = ui.ColorDefault
-	qr.TextBgColor = ui.ColorDefault
-	p.BorderLabel = "HELP"
+	qr := NewQR("bloop")
+	fmt.Println(qr)
 
 	count := NewCountdown(200)
 
 	draw := func(t int) {
 		//wipe()
 		//ui.Clear()
-		ui.Render(p)
+		qr.draw()
+		ui.Clear()
 		ui.Render(pair.Buffers()...)
 		count.draw()
 		ui.Render(count.gauge)
+		//qr.draw()
 		//fmt.Printf("\033[10;0H")
 		//fmt.Print(buf.String())
 		//ui.Render(pairStats.Buffers()...)
+		ui.Render(p)
+		//count.draw()
+		//ui.Render(count.gauge)
 	}
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		ui.StopLoop()
