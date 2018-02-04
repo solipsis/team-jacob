@@ -38,23 +38,38 @@ func (p *pairSelectorScreen) Init() {
 
 	p.selector = pair
 	p.marketInfo = m
-	p.stats = NewPairStats(pair.deposit.node.coin, pair.receive.node.coin, m)
+	d, r := pair.deposit.node.coin.Symbol, pair.receive.node.coin.Symbol
+	p.stats = NewPairStats(d, r, m[d+"_"+r])
 }
 
 func NewPairSelector(n *windowNode) *pairSelector {
 	dep := NewCoinWheel(n, 7, "Deposit")
 	rec := NewCoinWheel(n.next, 7, "Receive")
-	rec.active.X = 50
-	rec.background.X = 50
+	rec.active.X = 70
+	rec.background.X = 70
 	rec.active.ItemFgColor = ui.ColorGreen
 
 	return &pairSelector{dep, rec, dep}
 }
 
+func (p *pairSelectorScreen) SelectedCoins() (dep, rec *Coin) {
+	return p.selector.deposit.node.coin, p.selector.receive.node.coin
+}
+
 // TODO: remove dependency on ui???
 func (p *pairSelector) Buffers() []ui.Bufferer {
 	bufs := p.deposit.Buffers()
-	return append(bufs, p.receive.Buffers()...)
+	bufs = append(bufs, p.receive.Buffers()...)
+	return bufs
+}
+
+func (p *pairSelectorScreen) Buffers() []ui.Bufferer {
+	bufs := p.selector.Buffers()
+	// TODO: refactor this
+	d, r := p.SelectedCoins()
+	p.stats.Update(d.Symbol, r.Symbol, p.marketInfo[d.Symbol+"_"+r.Symbol])
+	bufs = append(bufs, p.stats.Buffers()...)
+	return bufs
 }
 
 // Handle responds to select UI events

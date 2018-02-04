@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	ui "github.com/gizak/termui"
 	ss "github.com/solipsis/shapeshift"
@@ -102,19 +103,25 @@ func main() {
 
 	//pairStats := NewPairStats(pair.deposit.node.coin, pair.receive.node.coin, m)
 
-	qr := NewQR("bloop")
-	fmt.Println(qr)
+	//qr := NewQR("bloop")
+	//fmt.Println(qr)
 
-	count := NewCountdown(200)
+	//count := NewCountdown(200)
+	//exchangeScreen := NewExchangeScreen()
 
 	draw := func(t int) {
 		//wipe()
+		//time.Sleep(200)
 		//ui.Clear()
-		qr.draw()
+		//qr.draw()
+		//exchangeScreen.DrawQR()
+		time.Sleep(200)
 		ui.Clear()
-		ui.Render(pair.Buffers()...)
-		count.draw()
-		ui.Render(count.gauge)
+		//time.Sleep(200)
+		ui.Render(selectScreen.Buffers()...)
+		//ui.Render(exchangeScreen.Buffers()...)
+		//count.draw()
+		//ui.Render(count.gauge)
 		//qr.draw()
 		//fmt.Printf("\033[10;0H")
 		//fmt.Print(buf.String())

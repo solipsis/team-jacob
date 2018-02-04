@@ -18,7 +18,7 @@ func NewCoinWheel(n *windowNode, numItems int, label string) *coinWheel {
 	back := ui.NewList()
 	back.Height = numItems + 4 // account for borders and active overlay
 	back.Width = 20
-	back.X = 30
+	back.X = 50
 	back.Y = 20
 	back.BorderLabel = label
 	back.BorderLabelFg = ui.ColorMagenta
@@ -27,7 +27,7 @@ func NewCoinWheel(n *windowNode, numItems int, label string) *coinWheel {
 	active.Items = []string{n.coin.Name}
 	active.Width = 20
 	active.Height = 3
-	active.X = 30
+	active.X = 50
 	active.Y = 20 + (numItems / 2) + 1
 	active.ItemFgColor = ui.ColorRed
 
