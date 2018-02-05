@@ -10,6 +10,10 @@ type coinWheel struct {
 	numItems           int
 }
 
+type wheelConfig struct {
+	x, y, width int
+}
+
 // NewCoinWheel creates a new gui element represeting a slot-machine like
 // display of a circular list of items with focus on the center item
 // numItems must be odd for the wheel to look decent
@@ -17,7 +21,7 @@ func NewCoinWheel(n *windowNode, numItems int, label string) *coinWheel {
 	// TODO: clean up height calculations
 	back := ui.NewList()
 	back.Height = numItems + 4 // account for borders and active overlay
-	back.Width = 20
+	back.Width = 21
 	back.X = 50
 	back.Y = 20
 	back.BorderLabel = label
@@ -25,7 +29,7 @@ func NewCoinWheel(n *windowNode, numItems int, label string) *coinWheel {
 
 	active := ui.NewList()
 	active.Items = []string{n.coin.Name}
-	active.Width = 20
+	active.Width = 21
 	active.Height = 3
 	active.X = 50
 	active.Y = 20 + (numItems / 2) + 1

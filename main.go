@@ -30,7 +30,7 @@ type windowNode struct {
 }
 
 func wipe() {
-	fmt.Printf("\003[0;0H]")
+	//fmt.Printf("\003[0;0H]")
 	fmt.Println(strings.Repeat("\n", 100))
 }
 
@@ -89,7 +89,7 @@ func main() {
 	}
 	defer ui.Close()
 
-	selectScreen := new(pairSelectorScreen)
+	selectScreen := NewPairSelectorScreen(DefaultSelectLayout)
 	selectScreen.Init()
 
 	pair := selectScreen.selector
@@ -101,12 +101,6 @@ func main() {
 	p.BorderLabel = "Butt"
 	p.BorderFg = ui.ColorWhite
 
-	//pairStats := NewPairStats(pair.deposit.node.coin, pair.receive.node.coin, m)
-
-	//qr := NewQR("bloop")
-	//fmt.Println(qr)
-
-	//count := NewCountdown(200)
 	//exchangeScreen := NewExchangeScreen()
 
 	draw := func(t int) {

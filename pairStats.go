@@ -13,17 +13,33 @@ type pairStats struct {
 	info                ss.MarketInfoResponse
 }
 
+type statConfig struct {
+	x, y                                    int
+	minWidth, maxWidth, rateWidth, feeWidth int
+}
+
+var defaultConfig = statConfig{
+	x:         3,
+	y:         10,
+	minWidth:  25,
+	maxWidth:  25,
+	rateWidth: 25,
+	feeWidth:  25,
+}
+
 // TODO: marketInfoResponse to interface???
 // info pane should probably be freed of ss dependencies.
 func NewPairStats(dep, rec string, info ss.MarketInfoResponse) *pairStats {
 	stats := pairStats{dep: dep, rec: rec, info: info}
-	stats.min = uiPar("B", "Deposit Min", 13, 13, 20, 3)
+	c := defaultConfig
+	// TODO: rework layout setup
+	stats.min = uiPar("B", "Deposit Min", c.x, c.y, c.minWidth, 3)
 	stats.min.BorderFg = ui.ColorBlue
-	stats.max = uiPar("A", "Deposit Max", 33, 13, 20, 3)
+	stats.max = uiPar("A", "Deposit Max", c.x+c.minWidth, c.y, c.maxWidth, 3)
 	stats.max.BorderFg = ui.ColorMagenta
-	stats.rate = uiPar("C", "Rate", 53, 13, 25, 3)
+	stats.rate = uiPar("C", "Rate", c.x+c.minWidth+c.maxWidth, c.y, c.rateWidth, 3)
 	stats.rate.BorderFg = ui.ColorYellow
-	stats.fee = uiPar("D", "Miner Fee", 78, 13, 20, 3)
+	stats.fee = uiPar("D", "Miner Fee", c.x+c.minWidth+c.maxWidth+c.rateWidth, c.y, c.feeWidth, 3)
 	stats.fee.BorderFg = ui.ColorRed
 	//stats.marketInfo = m
 
@@ -61,7 +77,6 @@ func uiPar(text, bLabel string, x, y, width, height int) *ui.Par {
 	par.Y = y
 	par.Width = width
 	par.Height = height
-
 	return par
 }
 

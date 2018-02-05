@@ -8,9 +8,27 @@ import (
 	ss "github.com/solipsis/shapeshift"
 )
 
-type pairSelectorScreen struct {
+type SelectLayout struct {
+	infoX, infoY, infoHeight, infoWidth     int
+	wheelX, wheelY, wheelHeight, wheelWidth int
+}
+
+var DefaultSelectLayout = &SelectLayout{
+	infoX:      20,
+	infoY:      20,
+	infoHeight: 3,
+	infoWidth:  40,
+	wheelX:     5,
+	wheelWidth: 21,
+	wheelY:     15,
+}
+
+type PairSelectorScreen struct {
 	selector   *pairSelector
 	stats      *pairStats
+	divider    *ui.Par
+	info       *ui.Par
+	layout     *SelectLayout
 	marketInfo map[string]ss.MarketInfoResponse
 }
 
@@ -18,7 +36,11 @@ type pairSelector struct {
 	deposit, receive, active *coinWheel
 }
 
-func (p *pairSelectorScreen) Init() {
+func NewPairSelectorScreen(l *SelectLayout) *PairSelectorScreen {
+	return &PairSelectorScreen{layout: l}
+}
+
+func (p *PairSelectorScreen) Init() {
 	coins, err := activeCoins()
 	if err != nil {
 		log.Println("Unableto contact shapeshift")
@@ -34,25 +56,54 @@ func (p *pairSelectorScreen) Init() {
 		m[v.Pair] = v
 	}
 	n := initWindow(coins)
-	pair := NewPairSelector(n)
+	pair := addPairSelector(n)
+	formatSelector(pair, p.layout)
 
 	p.selector = pair
 	p.marketInfo = m
 	d, r := pair.deposit.node.coin.Symbol, pair.receive.node.coin.Symbol
 	p.stats = NewPairStats(d, r, m[d+"_"+r])
+
+	div := ui.NewPar(" < --- > ")
+	div.Border = false
+	div.Y = p.layout.wheelY + 5
+	div.X = p.layout.wheelX + p.layout.wheelWidth
+	div.Height = 3
+	div.Width = 8
+	p.divider = div
 }
 
-func NewPairSelector(n *windowNode) *pairSelector {
+func addPairSelector(n *windowNode) *pairSelector {
 	dep := NewCoinWheel(n, 7, "Deposit")
+	//positionWheel(dep, x, y)
 	rec := NewCoinWheel(n.next, 7, "Receive")
-	rec.active.X = 70
-	rec.background.X = 70
+	//positionWheel(rec, x+30, y)
+	//rec.active.X = 70
+	//rec.background.X = 70
 	rec.active.ItemFgColor = ui.ColorGreen
 
 	return &pairSelector{dep, rec, dep}
 }
 
-func (p *pairSelectorScreen) SelectedCoins() (dep, rec *Coin) {
+func formatSelector(pair *pairSelector, layout *SelectLayout) {
+	// TODO: better layout system
+	pair.deposit.active.X = layout.wheelX
+	pair.deposit.active.Y = layout.wheelY + 4
+	pair.deposit.background.X = layout.wheelX
+	pair.deposit.background.Y = layout.wheelY
+
+	pair.receive.active.X = layout.wheelX + layout.wheelWidth + 9
+	pair.receive.active.Y = layout.wheelY + 4
+	pair.receive.background.X = layout.wheelX + layout.wheelWidth + 9
+	pair.receive.background.Y = layout.wheelY
+}
+
+func positionWheel(c *coinWheel, x, y int) {
+	c.background.X = x
+	c.active.X = x
+}
+
+func (p *PairSelectorScreen) SelectedCoins() (dep, rec *Coin) {
 	return p.selector.deposit.node.coin, p.selector.receive.node.coin
 }
 
@@ -63,12 +114,13 @@ func (p *pairSelector) Buffers() []ui.Bufferer {
 	return bufs
 }
 
-func (p *pairSelectorScreen) Buffers() []ui.Bufferer {
+func (p *PairSelectorScreen) Buffers() []ui.Bufferer {
 	bufs := p.selector.Buffers()
 	// TODO: refactor this
 	d, r := p.SelectedCoins()
 	p.stats.Update(d.Symbol, r.Symbol, p.marketInfo[d.Symbol+"_"+r.Symbol])
 	bufs = append(bufs, p.stats.Buffers()...)
+	bufs = append(bufs, p.divider)
 	return bufs
 }
 
