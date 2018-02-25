@@ -12,8 +12,11 @@ import (
 )
 
 type ExchangeScreen struct {
-	c  *countdown
-	qr *qr
+	c     *countdown
+	qr    *qr
+	stats *pairStats
+	//txProgress *txProgress
+
 }
 
 type countdown struct {
@@ -31,7 +34,7 @@ type qr struct {
 func NewExchangeScreen() *ExchangeScreen {
 	c := newCountdown(120)
 	qr := newQR("test")
-	return &ExchangeScreen{c, qr}
+	return &ExchangeScreen{c: c, qr: qr}
 
 }
 
@@ -62,8 +65,9 @@ func newCountdown(duration int) *countdown {
 	g := ui.NewGauge()
 	g.Percent = 80
 	g.Width = 50
-	g.Height = 5
-	g.Y = 40
+	g.Height = 3
+	g.Y = 20
+	g.X = 60
 	g.BorderLabel = "Time Remaining"
 
 	return &countdown{gauge: g, start: time.Now(), duration: time.Second * time.Duration(duration)}
@@ -86,9 +90,19 @@ func newQR(format string) *qr {
 			//WhiteChar:  qrterminal.BLACK,
 		}
 	*/
-	qrterminal.Generate("blah", qrterminal.L, buf)
+	//qrtermival
+	qrterminal.GenerateHalfBlock("blah", qrterminal.L, buf)
 	return &qr{buf}
 }
+
+// On exchange screen i need to ...
+// 1. show qr code
+// 2. show min max rate miner
+// 3. show awaiting deposit / awaiting exchange / done
+// 4. show order id
+// 4.5? where to show time remaining
+// 5. log transaction
+// 6. how to get recieve address from user ?? require entry in file?
 
 func (q *qr) draw() {
 	buf := new(bytes.Buffer)

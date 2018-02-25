@@ -28,6 +28,7 @@ type PairSelectorScreen struct {
 	stats      *pairStats
 	divider    *ui.Par
 	info       *ui.Par
+	help       *ui.Par
 	layout     *SelectLayout
 	marketInfo map[string]ss.MarketInfoResponse
 }
@@ -71,6 +72,13 @@ func (p *PairSelectorScreen) Init() {
 	div.Height = 3
 	div.Width = 8
 	p.divider = div
+
+	help := ui.NewPar("Use <arrow keys> to select 2 coins and <Enter> to initiate a Shift")
+	help.X = 13
+	help.Height = 3
+	help.Width = 60
+	help.Y = 13
+	p.help = help
 }
 
 func addPairSelector(n *windowNode) *pairSelector {
@@ -87,6 +95,8 @@ func addPairSelector(n *windowNode) *pairSelector {
 
 func formatSelector(pair *pairSelector, layout *SelectLayout) {
 	// TODO: better layout system
+	// TODO: set position of pairSelector together i.e. withjust one x,y pair
+
 	pair.deposit.active.X = layout.wheelX
 	pair.deposit.active.Y = layout.wheelY + 4
 	pair.deposit.background.X = layout.wheelX
@@ -121,6 +131,7 @@ func (p *PairSelectorScreen) Buffers() []ui.Bufferer {
 	p.stats.Update(d.Symbol, r.Symbol, p.marketInfo[d.Symbol+"_"+r.Symbol])
 	bufs = append(bufs, p.stats.Buffers()...)
 	bufs = append(bufs, p.divider)
+	bufs = append(bufs, p.help)
 	return bufs
 }
 

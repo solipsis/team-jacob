@@ -95,13 +95,21 @@ func main() {
 	pair := selectScreen.selector
 
 	p := ui.NewPar(SHAPESHIFT)
-	p.Height = 10
+	p.Height = 9
 	p.Width = 100
 	p.TextFgColor = ui.ColorCyan
-	p.BorderLabel = "Butt"
-	p.BorderFg = ui.ColorWhite
+	p.Border = false
 
-	//exchangeScreen := NewExchangeScreen()
+	fox := ui.NewPar(FOX)
+	fox.Height = 10
+	fox.Width = 29
+	fox.TextFgColor = ui.ColorCyan
+	fox.X = 60
+	fox.Border = false
+	//p.BorderLabel = "Butt"
+	//p.BorderFg = ui.ColorWhite
+
+	exchangeScreen := NewExchangeScreen()
 
 	draw := func(t int) {
 		//wipe()
@@ -121,6 +129,7 @@ func main() {
 		//fmt.Print(buf.String())
 		//ui.Render(pairStats.Buffers()...)
 		ui.Render(p)
+		ui.Render(fox)
 		//count.draw()
 		//ui.Render(count.gauge)
 	}
@@ -129,9 +138,6 @@ func main() {
 	})
 	ui.Handle("/sys/kbd/<up>", func(e ui.Event) {
 		pair.Handle(e.Path)
-		//pairStats.dep = pair.deposit.node.coin
-		//pairStats.rec = pair.receive.node.coin
-
 		draw(0)
 	})
 	ui.Handle("/sys/kbd/<left>", func(e ui.Event) {
@@ -145,16 +151,12 @@ func main() {
 
 	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
 		pair.Handle(e.Path)
-		//info, ok := m[pair.deposit.node.coin.Symbol+"_"+pair.receive.node.coin.Symbol]
-		//if ok {
-		//max.Text = fmt.Sprintf("%f", info.Limit)
-		//min.Text = fmt.Sprintf("%f", info.Min)
-		//rate.Text = fmt.Sprintf("1 %s = %f %s", pair.deposit.node.coin.Symbol, info.Rate, pair.receive.node.coin.Symbol)
-		//	fmt.Println(info.Rate)
-		//} else {
-		//max.Text = "Pair unavailable"
-		//}
 		draw(0)
+	})
+	ui.Handle("/sys/kbd/<enter>", func(e ui.Event) {
+		//fmt.Println("Exchange")
+		ui.Render(exchangeScreen.Buffers()...)
+		exchangeScreen.DrawQR()
 	})
 	draw(0)
 
@@ -182,6 +184,26 @@ const SHAPESHIFT = `
 ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝╚═╝        ╚═╝
 `
 */
+
+//const FOX = `  /\      /\
+///  \____/  \
+//((#)""""""(#))
+//("""""""""""")
+//("""""""""")
+//("""""""")
+//("""""")
+//("""")
+//("")
+//@@
+//`
+
+const FOX = `            ,^
+           ;  ;
+\'.,'/      ; ;
+/_  _\'-----';
+
+  \/' ,,,,,, ;
+    )//     \))`
 
 const SHAPESHIFT = "" +
 	"  ____  _                      ____  _     _  __ _   \n" +
