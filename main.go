@@ -95,43 +95,31 @@ func main() {
 	pair := selectScreen.selector
 
 	p := ui.NewPar(SHAPESHIFT)
-	p.Height = 9
+	p.Height = 7
 	p.Width = 100
+	p.X = 5
 	p.TextFgColor = ui.ColorCyan
 	p.Border = false
 
 	fox := ui.NewPar(FOX)
-	fox.Height = 10
+	fox.Height = 8
 	fox.Width = 29
 	fox.TextFgColor = ui.ColorCyan
-	fox.X = 60
+	fox.X = 70
 	fox.Border = false
-	//p.BorderLabel = "Butt"
-	//p.BorderFg = ui.ColorWhite
 
 	exchangeScreen := NewExchangeScreen()
 
 	draw := func(t int) {
-		//wipe()
-		//time.Sleep(200)
-		//ui.Clear()
-		//qr.draw()
-		//exchangeScreen.DrawQR()
 		time.Sleep(200)
 		ui.Clear()
 		//time.Sleep(200)
 		ui.Render(selectScreen.Buffers()...)
 		//ui.Render(exchangeScreen.Buffers()...)
-		//count.draw()
-		//ui.Render(count.gauge)
-		//qr.draw()
 		//fmt.Printf("\033[10;0H")
-		//fmt.Print(buf.String())
 		//ui.Render(pairStats.Buffers()...)
 		ui.Render(p)
 		ui.Render(fox)
-		//count.draw()
-		//ui.Render(count.gauge)
 	}
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		ui.StopLoop()
@@ -155,7 +143,12 @@ func main() {
 	})
 	ui.Handle("/sys/kbd/<enter>", func(e ui.Event) {
 		//fmt.Println("Exchange")
+
+		ui.Clear()
+		ui.Render(p)
+		ui.Render(fox)
 		ui.Render(exchangeScreen.Buffers()...)
+		time.Sleep(100 * time.Millisecond)
 		exchangeScreen.DrawQR()
 	})
 	draw(0)
@@ -184,18 +177,6 @@ const SHAPESHIFT = `
 ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝╚═╝        ╚═╝
 `
 */
-
-//const FOX = `  /\      /\
-///  \____/  \
-//((#)""""""(#))
-//("""""""""""")
-//("""""""""")
-//("""""""")
-//("""""")
-//("""")
-//("")
-//@@
-//`
 
 const FOX = `            ,^
            ;  ;

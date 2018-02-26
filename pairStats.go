@@ -19,8 +19,8 @@ type statConfig struct {
 }
 
 var defaultConfig = statConfig{
-	x:         3,
-	y:         10,
+	x:         1,
+	y:         8,
 	minWidth:  25,
 	maxWidth:  25,
 	rateWidth: 25,

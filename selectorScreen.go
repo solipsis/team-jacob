@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	ui "github.com/gizak/termui"
@@ -15,12 +14,12 @@ type SelectLayout struct {
 
 var DefaultSelectLayout = &SelectLayout{
 	infoX:      20,
-	infoY:      20,
+	infoY:      40,
 	infoHeight: 3,
 	infoWidth:  40,
-	wheelX:     5,
+	wheelX:     21,
 	wheelWidth: 21,
-	wheelY:     15,
+	wheelY:     12,
 }
 
 type PairSelectorScreen struct {
@@ -49,7 +48,7 @@ func (p *PairSelectorScreen) Init() {
 
 	rates, err := ss.MarketInfo()
 	if err != nil {
-		fmt.Println(err)
+		//fmt.Println(err)
 	}
 
 	m := make(map[string]ss.MarketInfoResponse)
@@ -73,11 +72,12 @@ func (p *PairSelectorScreen) Init() {
 	div.Width = 8
 	p.divider = div
 
-	help := ui.NewPar("Use <arrow keys> to select 2 coins and <Enter> to initiate a Shift")
+	msg := " Use <arrow keys> to select 2 coins and <Enter> to initiate a Shift "
+	help := ui.NewPar(msg)
 	help.X = 13
 	help.Height = 3
-	help.Width = 60
-	help.Y = 13
+	help.Width = len(msg) + 2
+	help.Y = 24
 	p.help = help
 }
 
@@ -101,6 +101,7 @@ func formatSelector(pair *pairSelector, layout *SelectLayout) {
 	pair.deposit.active.Y = layout.wheelY + 4
 	pair.deposit.background.X = layout.wheelX
 	pair.deposit.background.Y = layout.wheelY
+	pair.active.background.BorderFg = ui.ColorRed
 
 	pair.receive.active.X = layout.wheelX + layout.wheelWidth + 9
 	pair.receive.active.Y = layout.wheelY + 4
