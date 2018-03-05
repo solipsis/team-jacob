@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"time"
 
@@ -12,9 +11,12 @@ import (
 )
 
 type ExchangeScreen struct {
-	c     *countdown
-	qr    *qr
-	stats *pairStats
+	c       *countdown
+	qr      *qr
+	stats   *pairStats
+	depAddr *ui.Par
+	recAddr *ui.Par
+	retAddr *ui.Par
 	//txProgress *txProgress
 
 }
@@ -32,15 +34,43 @@ type qr struct {
 }
 
 func NewExchangeScreen() *ExchangeScreen {
-	c := newCountdown(120)
+	c := newCountdown(330)
 	qr := newQR("test")
-	return &ExchangeScreen{c: c, qr: qr}
+
+	dep := ui.NewPar("0x05a30f30ad43faea94d1d3d35e3222375bd9dd21")
+	dep.Height = 3
+	dep.Width = 46
+	dep.BorderLabel = "Deposit Address"
+	dep.BorderFg = ui.ColorRed
+	dep.X = 67
+	dep.Y = 15
+
+	rec := ui.NewPar("1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX")
+	rec.Height = 3
+	rec.Width = 46
+	rec.BorderLabel = "Receive Address"
+	rec.BorderFg = ui.ColorGreen
+	rec.X = 67
+	rec.Y = 19
+
+	ret := ui.NewPar("0x6b67c94fc31510707F9c0f1281AaD5ec9a2EEFF0")
+	ret.Height = 3
+	ret.Width = 46
+	ret.BorderLabel = "Return Address"
+	ret.BorderFg = ui.ColorYellow
+	ret.X = 67
+	ret.Y = 23
+
+	return &ExchangeScreen{c: c, qr: qr, depAddr: dep, recAddr: rec, retAddr: ret}
 
 }
 
 func (e *ExchangeScreen) Buffers() []ui.Bufferer {
 	e.c.update()
-	return append([]ui.Bufferer{}, e.c.gauge)
+	bufs := append([]ui.Bufferer{}, e.depAddr)
+	bufs = append(bufs, e.recAddr)
+	bufs = append(bufs, e.retAddr)
+	return append(bufs, e.c.gauge)
 }
 
 // DrawQR muust be called seperately because termui does not accept
@@ -51,23 +81,34 @@ func (e *ExchangeScreen) DrawQR() {
 
 // update the countdown based on elapsed time
 func (c *countdown) update() {
+
+	// Adjust filled gauge proportion
 	diff := time.Since(c.start)
 	if diff == 0 {
 		c.gauge.Percent = 100
 	} else {
 		c.gauge.Percent = 100 - int((diff*100)/(c.duration))
 	}
+
+	// calculate time remaining
 	seconds := int((c.duration - diff) / time.Second)
+	if seconds < 0 {
+		seconds = 0
+	}
 	c.gauge.Label = strconv.Itoa(seconds) + "s Remaining"
 }
 
 func newCountdown(duration int) *countdown {
 	g := ui.NewGauge()
 	g.Percent = 80
-	g.Width = 50
+	g.Width = 46
 	g.Height = 3
-	g.Y = 20
-	g.X = 60
+	g.Y = 27
+	g.X = 67
+	g.BorderFg = ui.ColorBlue
+	g.BorderLabelFg = ui.ColorYellow
+	//g.PercentColor = ui.ColorRed
+	//g.BarColor = ui.ColorGreen
 	g.BorderLabel = "Time Remaining"
 
 	return &countdown{gauge: g, start: time.Now(), duration: time.Second * time.Duration(duration)}
@@ -106,8 +147,9 @@ func newQR(format string) *qr {
 
 func (q *qr) draw() {
 	buf := new(bytes.Buffer)
-	i := rand.Intn(5000000)
-	qrterminal.Generate(strconv.Itoa(i)+"butt"+strconv.Itoa(i), qrterminal.L, buf)
+	//i := rand.Intn(5000000)
+	//qrterminal.Generate(strconv.Itoa(i)+"butt"+strconv.Itoa(i), qrterminal.L, buf)
+	qrterminal.Generate("0x05a30f30ad43faea94d1d3d35e3222375bd9dd21", qrterminal.L, buf)
 	q.buf = buf
 	fmt.Printf("\033[10;0H")
 	fmt.Println(q.buf.String())

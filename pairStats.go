@@ -63,10 +63,17 @@ func (p *pairStats) Buffers() []ui.Bufferer {
 		p.fee.Text = "Pair Unavailable"
 		return []ui.Bufferer{p.min, p.max, p.rate, p.fee}
 	}
-	p.max.Text = fmt.Sprintf("%f %s", p.info.Limit, p.dep)
-	p.min.Text = fmt.Sprintf("%f %s", p.info.Min, p.dep)
-	p.rate.Text = fmt.Sprintf("1 %s = %f %s", p.dep, p.info.Rate, p.rec)
-	p.fee.Text = fmt.Sprintf("%f %s", p.info.MinerFee, p.rec)
+	if p.rec == "XRP" || p.dep == "XRP" {
+		p.max.Text = "        DON'T"
+		p.min.Text = " NOPE NOPE NOPE!!!"
+		p.rate.Text = "        EVEN"
+		p.fee.Text = "       JOKE!!!"
+	} else {
+		p.max.Text = fmt.Sprintf("%f %s", p.info.Limit, p.dep)
+		p.min.Text = fmt.Sprintf("%f %s", p.info.Min, p.dep)
+		p.rate.Text = fmt.Sprintf("1 %s = %f %s", p.dep, p.info.Rate, p.rec)
+		p.fee.Text = fmt.Sprintf("%f %s", p.info.MinerFee, p.rec)
+	}
 	return []ui.Bufferer{p.min, p.max, p.rate, p.fee}
 }
 

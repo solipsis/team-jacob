@@ -61,7 +61,7 @@ func (p *PairSelectorScreen) Init() {
 
 	p.selector = pair
 	p.marketInfo = m
-	d, r := pair.deposit.node.coin.Symbol, pair.receive.node.coin.Symbol
+	d, r := pair.deposit.ring.Value().Symbol, pair.receive.ring.Value().Symbol
 	p.stats = NewPairStats(d, r, m[d+"_"+r])
 
 	div := ui.NewPar(" < --- > ")
@@ -81,13 +81,15 @@ func (p *PairSelectorScreen) Init() {
 	p.help = help
 }
 
-func addPairSelector(n *windowNode) *pairSelector {
-	dep := NewCoinWheel(n, 7, "Deposit")
+func addPairSelector(r coinRing) *pairSelector {
+	dep := NewCoinWheel(r, 7, "Deposit")
 	//positionWheel(dep, x, y)
-	rec := NewCoinWheel(n.next, 7, "Receive")
+	rec := NewCoinWheel(r.Next(), 7, "Receive")
 	//positionWheel(rec, x+30, y)
 	//rec.active.X = 70
 	//rec.background.X = 70
+	dep.background.BorderLabelFg = ui.ColorGreen
+	rec.background.BorderLabelFg = ui.ColorGreen
 	rec.active.ItemFgColor = ui.ColorGreen
 
 	return &pairSelector{dep, rec, dep}
@@ -115,7 +117,7 @@ func positionWheel(c *coinWheel, x, y int) {
 }
 
 func (p *PairSelectorScreen) SelectedCoins() (dep, rec *Coin) {
-	return p.selector.deposit.node.coin, p.selector.receive.node.coin
+	return p.selector.deposit.ring.Value(), p.selector.receive.ring.Value()
 }
 
 // TODO: remove dependency on ui???
