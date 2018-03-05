@@ -55,7 +55,7 @@ func (p *PairSelectorScreen) Init() {
 	for _, v := range rates {
 		m[v.Pair] = v
 	}
-	n := initWindow(coins)
+	n := toCoinRing(coins)
 	pair := addPairSelector(n)
 	formatSelector(pair, p.layout)
 
