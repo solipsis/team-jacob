@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	ui "github.com/gizak/termui"
 	"github.com/mdp/qrterminal"
+	ss "github.com/solipsis/shapeshift"
 )
 
 type ExchangeScreen struct {
@@ -33,11 +35,12 @@ type qr struct {
 	buf *bytes.Buffer
 }
 
-func NewExchangeScreen() *ExchangeScreen {
+func NewExchangeScreen(resp *ss.NewTransactionResponse) *ExchangeScreen {
 	c := newCountdown(330)
-	qr := newQR("test")
+	qr := newQR(resp.SendTo)
 
-	dep := ui.NewPar("0x05a30f30ad43faea94d1d3d35e3222375bd9dd21")
+	//dep := ui.NewPar("0x05a30f30ad43faea94d1d3d35e3222375bd9dd21")
+	dep := ui.NewPar(resp.SendTo)
 	dep.Height = 3
 	dep.Width = 46
 	dep.BorderLabel = "Deposit Address"
@@ -46,6 +49,7 @@ func NewExchangeScreen() *ExchangeScreen {
 	dep.Y = 15
 
 	rec := ui.NewPar("1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX")
+	//rec := ui.NewPar(resp.Withdrawal)
 	rec.Height = 3
 	rec.Width = 46
 	rec.BorderLabel = "Receive Address"
@@ -53,7 +57,8 @@ func NewExchangeScreen() *ExchangeScreen {
 	rec.X = 67
 	rec.Y = 19
 
-	ret := ui.NewPar("0x6b67c94fc31510707F9c0f1281AaD5ec9a2EEFF0")
+	//ret := ui.NewPar("0x6b67c94fc31510707F9c0f1281AaD5ec9a2EEFF0")
+	ret := ui.NewPar(resp.ReturnTo)
 	ret.Height = 3
 	ret.Width = 46
 	ret.BorderLabel = "Return Address"
@@ -116,7 +121,7 @@ func newCountdown(duration int) *countdown {
 }
 
 //TODO: change to enum
-func newQR(format string) *qr {
+func newQR(data string) *qr {
 	buf := new(bytes.Buffer)
 	/*
 		config := qrterminal.Config{
@@ -132,7 +137,8 @@ func newQR(format string) *qr {
 		}
 	*/
 	//qrtermival
-	qrterminal.GenerateHalfBlock("blah", qrterminal.L, buf)
+	//qrterminal.GenerateHalfBlock(data, qrterminal.L, buf)
+	qrterminal.Generate(data, qrterminal.L, buf)
 	return &qr{buf}
 }
 
@@ -146,12 +152,17 @@ func newQR(format string) *qr {
 // 6. how to get recieve address from user ?? require entry in file?
 
 func (q *qr) draw() {
-	buf := new(bytes.Buffer)
+	//buf := new(bytes.Buffer)
 	//i := rand.Intn(5000000)
 	//qrterminal.Generate(strconv.Itoa(i)+"butt"+strconv.Itoa(i), qrterminal.L, buf)
-	qrterminal.Generate("0x05a30f30ad43faea94d1d3d35e3222375bd9dd21", qrterminal.L, buf)
-	q.buf = buf
+	//qrterminal.Generate("0x05a30f30ad43faea94d1d3d35e3222375bd9dd21", qrterminal.L, buf)
+	//q.buf = buf
 	fmt.Printf("\033[10;0H")
-	fmt.Println(q.buf.String())
+	for _, l := range strings.Split(q.buf.String(), "\n") {
+		fmt.Printf(l)
+		fmt.Printf("\033[B")
+		fmt.Printf("\r")
+	}
+	//fmt.Fprint(os.Stdout, q.buf.String())
 	//io.Copy(os.Stdout, q)
 }

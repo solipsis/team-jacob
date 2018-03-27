@@ -39,6 +39,11 @@ func NewCoinWheel(r coinRing, numItems int, label string) *coinWheel {
 	return &coinWheel{active: active, background: back, ring: r, numItems: numItems}
 }
 
+// SelectedCoin returns the coin currently highlighted by the wheel
+func (w *coinWheel) SelectedCoin() *Coin {
+	return w.ring.Value()
+}
+
 // We always want to render the background before the active item
 func (w *coinWheel) Buffers() []ui.Bufferer {
 	w.background.Items = w.backgroundItems()

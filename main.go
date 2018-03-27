@@ -32,12 +32,37 @@ func wipe() {
 
 // initiate a new shift with Shapeshift
 func newShift() (*ss.NewTransactionResponse, error) {
+
+	//s := ss.New{
+	//TODO; check other similar method on select screen
+	//Pair:      selectScreen.activePair(),
+	//ToAddress: "0xa6bd216e8e5f463742f37aaab169cabce601835c",
+	//}
+
+	//response, err := s.Shift()
+	//if err != nil {
+	//panic(err)
+	//}
+
+	//if response.ErrorMsg() != "" {
+	//panic(response.ErrorMsg())
+	//}
+
+	// TODO; setup send and re
 	return &ss.NewTransactionResponse{
 		SendTo:     "0xa6bd216e8e5f463742f37aaab169cabce601835c",
 		SendType:   "ETH",
 		ReturnTo:   "16FdfRFVPUwiKAceRSqgEfn1tmB4sVUmLh",
 		ReturnType: "BTC",
 	}, nil
+	/*
+		return &ss.NewTransactionResponse{
+			SendTo:     "0xa6bd216e8e5f463742f37aaab169cabce601835c",
+			SendType:   "ETH",
+			ReturnTo:   "16FdfRFVPUwiKAceRSqgEfn1tmB4sVUmLh",
+			ReturnType: "BTC",
+		}, nil
+	*/
 }
 
 // activeCoins returns a slice of all the currently active coins on shapeshift
@@ -73,6 +98,11 @@ const (
 	exchange
 )
 
+func (s *state) transitionSelect() {
+	selectScreen.Init()
+	*s = selection
+}
+
 type header struct {
 	logo, fox *ui.Par
 }
@@ -101,6 +131,11 @@ func (h *header) draw() []ui.Bufferer {
 	return []ui.Bufferer{h.logo, h.fox}
 }
 
+var (
+	selectScreen   *PairSelectorScreen
+	exchangeScreen *ExchangeScreen
+)
+
 func main() {
 
 	if err := ui.Init(); err != nil {
@@ -108,11 +143,11 @@ func main() {
 	}
 	defer ui.Close()
 
-	selectScreen := NewPairSelectorScreen(DefaultSelectLayout)
+	selectScreen = NewPairSelectorScreen(DefaultSelectLayout)
 
-	//pair := selectScreen.selector
 	header := newHeader(DefaultHeaderConfig)
-	exchangeScreen := NewExchangeScreen()
+	shift, _ := newShift()
+	exchangeScreen = NewExchangeScreen(shift)
 	var curState = loading
 	first := true
 
@@ -144,7 +179,11 @@ func main() {
 
 				go func() {
 					for range ticker.C {
+						ui.Clear()
+						ui.Render(header.draw()...)
 						ui.Render(exchangeScreen.Buffers()...)
+						time.Sleep(100 * time.Millisecond)
+						exchangeScreen.DrawQR()
 					}
 				}()
 			}
@@ -160,14 +199,10 @@ func main() {
 	}
 	ui.Handle("/sys/wnd/resize", func(e ui.Event) {
 
-		// If windowsize < min for barcode then no qrcode
-
-		wnd, ok := e.Data.(ui.EvtWnd)
-		if !ok {
-			fmt.Println("HEEEEELLLLPPPP")
-		}
-		fmt.Println("Width:", wnd.Width)
-		fmt.Println("Height:", wnd.Height)
+		//wnd, ok := e.Data.(ui.EvtWnd)
+		//if !ok {
+		//fmt.Println("HEEEEELLLLPPPP")
+		//}
 		//type EvtWnd struct {
 		//Width  int
 		//Height int
@@ -181,31 +216,26 @@ func main() {
 		draw(0)
 
 	})
-	draw(0)
 
-	// Wait for selection screen data to load
-	// add event handlers and redraw
-	// TODO: handle events over channels
-	selectScreen.Init()
-	pair := selectScreen.selector
 	ui.Handle("/sys/kbd/<up>", func(e ui.Event) {
-		pair.Handle(e.Path)
+		selectScreen.Handle(e.Path)
 		draw(0)
 	})
 	ui.Handle("/sys/kbd/<left>", func(e ui.Event) {
-		pair.Handle(e.Path)
+		selectScreen.Handle(e.Path)
 		draw(0)
 	})
 	ui.Handle("/sys/kbd/<right>", func(e ui.Event) {
-		pair.Handle(e.Path)
+		selectScreen.Handle(e.Path)
 		draw(0)
 	})
 
 	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
-		pair.Handle(e.Path)
+		selectScreen.Handle(e.Path)
 		draw(0)
 	})
-	curState = selection
+	draw(0)
+	curState.transitionSelect()
 	draw(0)
 	ui.Loop()
 	fmt.Println("done")

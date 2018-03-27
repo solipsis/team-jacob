@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	ui "github.com/gizak/termui"
 	ss "github.com/solipsis/shapeshift"
 )
@@ -43,7 +41,7 @@ func NewPairSelectorScreen(l *SelectLayout) *PairSelectorScreen {
 func (p *PairSelectorScreen) Init() {
 	coins, err := activeCoins()
 	if err != nil {
-		log.Println("Unableto contact shapeshift")
+		//log.Println("Unableto contact shapeshift")
 	}
 
 	rates, err := ss.MarketInfo()
@@ -81,13 +79,13 @@ func (p *PairSelectorScreen) Init() {
 	p.help = help
 }
 
+func (p *PairSelectorScreen) activePair() string {
+	return p.selector.receive.SelectedCoin().Symbol + "_" + p.selector.receive.SelectedCoin().Symbol
+}
+
 func addPairSelector(r coinRing) *pairSelector {
 	dep := NewCoinWheel(r, 7, "Deposit")
-	//positionWheel(dep, x, y)
 	rec := NewCoinWheel(r.Next(), 7, "Receive")
-	//positionWheel(rec, x+30, y)
-	//rec.active.X = 70
-	//rec.background.X = 70
 	dep.background.BorderLabelFg = ui.ColorGreen
 	rec.background.BorderLabelFg = ui.ColorGreen
 	rec.active.ItemFgColor = ui.ColorGreen
@@ -97,7 +95,6 @@ func addPairSelector(r coinRing) *pairSelector {
 
 func formatSelector(pair *pairSelector, layout *SelectLayout) {
 	// TODO: better layout system
-	// TODO: set position of pairSelector together i.e. withjust one x,y pair
 
 	pair.deposit.active.X = layout.wheelX
 	pair.deposit.active.Y = layout.wheelY + 4
@@ -109,11 +106,6 @@ func formatSelector(pair *pairSelector, layout *SelectLayout) {
 	pair.receive.active.Y = layout.wheelY + 4
 	pair.receive.background.X = layout.wheelX + layout.wheelWidth + 9
 	pair.receive.background.Y = layout.wheelY
-}
-
-func positionWheel(c *coinWheel, x, y int) {
-	c.background.X = x
-	c.active.X = x
 }
 
 func (p *PairSelectorScreen) SelectedCoins() (dep, rec *Coin) {
@@ -139,7 +131,13 @@ func (p *PairSelectorScreen) Buffers() []ui.Bufferer {
 }
 
 // Handle responds to select UI events
-func (p *pairSelector) Handle(e string) {
+func (s *PairSelectorScreen) Handle(e string) {
+	// Screen must be initialized before responding to events
+	if s == nil {
+		return
+	}
+
+	p := s.selector
 	if e == "/sys/kbd/<up>" {
 		p.active.Prev()
 	}
