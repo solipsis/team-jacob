@@ -41,12 +41,12 @@ func NewPairSelectorScreen(l *SelectLayout) *PairSelectorScreen {
 func (p *PairSelectorScreen) Init() {
 	coins, err := activeCoins()
 	if err != nil {
-		//log.Println("Unableto contact shapeshift")
+		Log.Println("Unable to contact shapeshift", err)
 	}
 
 	rates, err := ss.MarketInfo()
 	if err != nil {
-		//fmt.Println(err)
+		Log.Println("Unable to get market info:", err)
 	}
 
 	m := make(map[string]ss.MarketInfoResponse)
@@ -80,7 +80,7 @@ func (p *PairSelectorScreen) Init() {
 }
 
 func (p *PairSelectorScreen) activePair() string {
-	return p.selector.receive.SelectedCoin().Symbol + "_" + p.selector.receive.SelectedCoin().Symbol
+	return p.selector.receive.SelectedCoin().Symbol + "_" + p.selector.deposit.SelectedCoin().Symbol
 }
 
 func addPairSelector(r coinRing) *pairSelector {

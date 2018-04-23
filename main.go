@@ -2,18 +2,30 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"sort"
 	"strings"
 	"time"
 
 	ui "github.com/gizak/termui"
+	"github.com/manifoldco/promptui"
 	ss "github.com/solipsis/shapeshift"
+)
+
+var (
+	Log *log.Logger
 )
 
 type Coin struct {
 	Name      string
 	Symbol    string
 	Available bool
+}
+
+type shift struct {
+	*ss.NewTransactionResponse
+	receiveAddr string
 }
 
 // extract the fields we need from a shapeshift coin response object
@@ -31,30 +43,40 @@ func wipe() {
 }
 
 // initiate a new shift with Shapeshift
-func newShift() (*ss.NewTransactionResponse, error) {
+func newShift(pair, recAddr string) (*shift, error) {
 
-	//s := ss.New{
-	//TODO; check other similar method on select screen
-	//Pair:      selectScreen.activePair(),
-	//ToAddress: "0xa6bd216e8e5f463742f37aaab169cabce601835c",
-	//}
+	//to := "0xa6bd216e8e5f463742f37aaab169cabce601835c"
+	s := ss.New{
+		//TODO; check other similar method on select screen
+		Pair:      pair,
+		ToAddress: recAddr,
+	}
+	Log.Println("Pair: ", selectScreen.activePair())
 
-	//response, err := s.Shift()
-	//if err != nil {
-	//panic(err)
-	//}
+	fmt.Println("active-pair", s.Pair)
 
-	//if response.ErrorMsg() != "" {
-	//panic(response.ErrorMsg())
-	//}
+	response, err := s.Shift()
+	if err != nil {
+		Log.Println(err)
+		panic(err)
+	}
+	Log.Println("received from ss ", response)
+
+	if response.ErrorMsg() != "" {
+		Log.Println(response.ErrorMsg())
+		panic(response.ErrorMsg())
+	}
+	return &shift{response, pair}, nil
 
 	// TODO; setup send and re
-	return &ss.NewTransactionResponse{
-		SendTo:     "0xa6bd216e8e5f463742f37aaab169cabce601835c",
-		SendType:   "ETH",
-		ReturnTo:   "16FdfRFVPUwiKAceRSqgEfn1tmB4sVUmLh",
-		ReturnType: "BTC",
-	}, nil
+	/*
+		return &ss.NewTransactionResponse{
+			SendTo:     "0xa6bd216e8e5f463742f37aaab169cabce601835c",
+			SendType:   "ETH",
+			ReturnTo:   "16FdfRFVPUwiKAceRSqgEfn1tmB4sVUmLh",
+			ReturnType: "BTC",
+		}, nil
+	*/
 	/*
 		return &ss.NewTransactionResponse{
 			SendTo:     "0xa6bd216e8e5f463742f37aaab169cabce601835c",
@@ -95,12 +117,32 @@ type state int
 const (
 	loading state = iota
 	selection
+	addressInput
 	exchange
 )
 
-func (s *state) transitionSelect() {
+func (s *state) transitionSelect() state {
 	selectScreen.Init()
-	*s = selection
+	return selection
+}
+
+func (s *state) transitionExchange(recAddr string) state {
+	Log.Println("Transition Exchange. recAddr: ", recAddr)
+
+	// if destination Address set go to exchange
+	// if not prompt
+	if recAddr == "" {
+		return addressInput
+	}
+
+	shift, err := newShift(selectScreen.activePair(), recAddr)
+	if err != nil {
+		Log.Println(err)
+		panic(err)
+	}
+
+	exchangeScreen = NewExchangeScreen(shift)
+	return exchange
 }
 
 type header struct {
@@ -137,6 +179,15 @@ var (
 )
 
 func main() {
+	f, err := os.OpenFile("debugLog", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		Log.Println("error opening log file: %v", err)
+		panic(err)
+	}
+	defer f.Close()
+
+	Log = log.New(f, "", 0)
+	Log.SetOutput(f)
 
 	if err := ui.Init(); err != nil {
 		panic(err)
@@ -146,14 +197,13 @@ func main() {
 	selectScreen = NewPairSelectorScreen(DefaultSelectLayout)
 
 	header := newHeader(DefaultHeaderConfig)
-	shift, _ := newShift()
-	exchangeScreen = NewExchangeScreen(shift)
 	var curState = loading
 	first := true
 
 	draw := func(t int) {
 		ui.Clear()
 
+		Log.Println("Current State: ", curState)
 		switch curState {
 		case loading:
 			load := ui.NewPar("Loading...")
@@ -169,7 +219,30 @@ func main() {
 		case selection:
 			ui.Render(selectScreen.Buffers()...)
 			ui.Render(header.draw()...)
+		case addressInput:
+			ui.Clear()
+			prompt := promptui.Prompt{
+				Label: "Destination Address",
+			}
+			res, err := prompt.Run()
+			if err != nil {
+				Log.Println(err)
+				panic(err)
+			}
+			Log.Println("ADDRESS:", res)
+			//shift, err := newShift(selectScreen.activePair(), res)
+			//if err != nil {
+			//Log.Println(err)
+			//panic(err)
+			//}
+			// TODO: Why does prompt ui cause the cursor to be visible after it runs
+			fmt.Println("Pre State", curState)
+			curState = curState.transitionExchange(res)
+			fmt.Println("Post state", curState)
+
 		case exchange:
+			//shift, _ := newShift()
+			//exchangeScreen = NewExchangeScreen(shift)
 
 			// if we have just transitioned to this page
 			// set up timer to update the time remaining
@@ -212,7 +285,12 @@ func main() {
 		ui.StopLoop()
 	})
 	ui.Handle("/sys/kbd/<enter>", func(e ui.Event) {
-		curState = exchange
+		//curState = exchange
+
+		//curState = addressInput
+		_, rec := selectScreen.SelectedCoins()
+		curState = curState.transitionExchange(loadDepositAddresses()[rec.Symbol])
+		//curState = curState.transitionExchange("0x6b67c94fc31510707F9c0f1281AaD5ec9a2EEFF0")
 		draw(0)
 
 	})
@@ -235,7 +313,7 @@ func main() {
 		draw(0)
 	})
 	draw(0)
-	curState.transitionSelect()
+	curState = curState.transitionSelect()
 	draw(0)
 	ui.Loop()
 	fmt.Println("done")

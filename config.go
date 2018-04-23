@@ -1,6 +1,37 @@
 package main
 
-import ui "github.com/gizak/termui"
+import (
+	"bufio"
+	"os"
+	"strings"
+
+	ui "github.com/gizak/termui"
+)
+
+func loadDepositAddresses() map[string]string {
+	m := make(map[string]string)
+	f, err := os.Open("addresses.cfg")
+	if err != nil {
+		Log.Println(err)
+		return m
+	}
+
+	sc := bufio.NewScanner(f)
+	if err != nil {
+		Log.Println(err)
+		return m
+	}
+
+	for sc.Scan() {
+		arr := strings.Split(sc.Text(), " ")
+		if len(arr) == 2 {
+			m[arr[0]] = arr[1]
+			Log.Println("Loaded destination address:", arr[0], arr[1])
+		}
+	}
+
+	return m
+}
 
 // Configuration for the header which includes the logo and fox image
 type HeaderConfig struct {

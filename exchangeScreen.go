@@ -9,7 +9,6 @@ import (
 
 	ui "github.com/gizak/termui"
 	"github.com/mdp/qrterminal"
-	ss "github.com/solipsis/shapeshift"
 )
 
 type ExchangeScreen struct {
@@ -35,7 +34,7 @@ type qr struct {
 	buf *bytes.Buffer
 }
 
-func NewExchangeScreen(resp *ss.NewTransactionResponse) *ExchangeScreen {
+func NewExchangeScreen(resp *shift) *ExchangeScreen {
 	c := newCountdown(330)
 	qr := newQR(resp.SendTo)
 
