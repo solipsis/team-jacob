@@ -35,38 +35,36 @@ type qr struct {
 }
 
 func NewExchangeScreen(resp *shift) *ExchangeScreen {
-	c := newCountdown(330)
-	qr := newQR(resp.SendTo)
 
-	//dep := ui.NewPar("0x05a30f30ad43faea94d1d3d35e3222375bd9dd21")
+	cfg := DefaultExchangeConfig
+
 	dep := ui.NewPar(resp.SendTo)
-	dep.Height = 3
-	dep.Width = 46
 	dep.BorderLabel = "Deposit Address"
-	dep.BorderFg = ui.ColorRed
-	dep.X = 67
-	dep.Y = 15
+	dep.Height = cfg.DepHeight
+	dep.Width = cfg.DepWidth
+	dep.BorderFg = cfg.DepColor
+	dep.X = cfg.DepX
+	dep.Y = cfg.DepY
 
-	rec := ui.NewPar("1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX")
-	//rec := ui.NewPar(resp.Withdrawal)
-	rec.Height = 3
-	rec.Width = 46
+	rec := ui.NewPar(resp.receiveAddr)
 	rec.BorderLabel = "Receive Address"
-	rec.BorderFg = ui.ColorGreen
-	rec.X = 67
-	rec.Y = 19
+	rec.Height = cfg.RecHeight
+	rec.Width = cfg.RecWidth
+	rec.BorderFg = cfg.RecColor
+	rec.X = cfg.RecX
+	rec.Y = cfg.RecY
 
-	//ret := ui.NewPar("0x6b67c94fc31510707F9c0f1281AaD5ec9a2EEFF0")
 	ret := ui.NewPar(resp.ReturnTo)
-	ret.Height = 3
-	ret.Width = 46
 	ret.BorderLabel = "Return Address"
-	ret.BorderFg = ui.ColorYellow
-	ret.X = 67
-	ret.Y = 23
+	ret.Height = cfg.RetHeight
+	ret.Width = cfg.RetWidth
+	ret.BorderFg = cfg.RetColor
+	ret.X = cfg.RetX
+	ret.Y = cfg.RetY
 
+	c := newCountdown(300)
+	qr := newQR(resp.SendTo)
 	return &ExchangeScreen{c: c, qr: qr, depAddr: dep, recAddr: rec, retAddr: ret}
-
 }
 
 func (e *ExchangeScreen) Buffers() []ui.Bufferer {
@@ -104,7 +102,7 @@ func (c *countdown) update() {
 
 func newCountdown(duration int) *countdown {
 	g := ui.NewGauge()
-	g.Percent = 80
+	g.Percent = 100
 	g.Width = 46
 	g.Height = 3
 	g.Y = 27

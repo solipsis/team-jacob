@@ -53,8 +53,6 @@ func newShift(pair, recAddr string) (*shift, error) {
 	}
 	Log.Println("Pair: ", selectScreen.activePair())
 
-	fmt.Println("active-pair", s.Pair)
-
 	response, err := s.Shift()
 	if err != nil {
 		Log.Println(err)
@@ -66,7 +64,7 @@ func newShift(pair, recAddr string) (*shift, error) {
 		Log.Println(response.ErrorMsg())
 		panic(response.ErrorMsg())
 	}
-	return &shift{response, pair}, nil
+	return &shift{response, recAddr}, nil
 
 	// TODO; setup send and re
 	/*
@@ -236,9 +234,7 @@ func main() {
 			//panic(err)
 			//}
 			// TODO: Why does prompt ui cause the cursor to be visible after it runs
-			fmt.Println("Pre State", curState)
 			curState = curState.transitionExchange(res)
-			fmt.Println("Post state", curState)
 
 		case exchange:
 			//shift, _ := newShift()

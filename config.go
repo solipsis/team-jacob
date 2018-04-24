@@ -57,6 +57,32 @@ var DefaultHeaderConfig = &HeaderConfig{
 	LogoTextFgColor: ui.ColorCyan,
 }
 
+type ExchangeConfig struct {
+	DepHeight, RecHeight, RetHeight int
+	DepWidth, RecWidth, RetWidth    int
+	DepX, RecX, RetX                int
+	DepY, RecY, RetY                int
+	DepColor, RecColor, RetColor    ui.Attribute
+}
+
+var DefaultExchangeConfig = &ExchangeConfig{
+	DepHeight: 3,
+	DepWidth:  46,
+	DepX:      67,
+	DepY:      15,
+	DepColor:  ui.ColorRed,
+	RecHeight: 3,
+	RecWidth:  46,
+	RecX:      67,
+	RecY:      19,
+	RecColor:  ui.ColorGreen,
+	RetHeight: 3,
+	RetWidth:  46,
+	RetX:      67,
+	RetY:      23,
+	RetColor:  ui.ColorYellow,
+}
+
 type LoadingConfig struct {
 	X, Y          int
 	Width, Height int
