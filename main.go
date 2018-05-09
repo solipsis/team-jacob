@@ -37,11 +37,6 @@ func toCoin(sc ss.Coin) *Coin {
 	}
 }
 
-func wipe() {
-	//fmt.Printf("\003[0;0H]")
-	fmt.Println(strings.Repeat("\n", 100))
-}
-
 // initiate a new shift with Shapeshift
 func newShift(pair, recAddr string) (*shift, error) {
 
@@ -65,24 +60,6 @@ func newShift(pair, recAddr string) (*shift, error) {
 		panic(response.ErrorMsg())
 	}
 	return &shift{response, recAddr}, nil
-
-	// TODO; setup send and re
-	/*
-		return &ss.NewTransactionResponse{
-			SendTo:     "0xa6bd216e8e5f463742f37aaab169cabce601835c",
-			SendType:   "ETH",
-			ReturnTo:   "16FdfRFVPUwiKAceRSqgEfn1tmB4sVUmLh",
-			ReturnType: "BTC",
-		}, nil
-	*/
-	/*
-		return &ss.NewTransactionResponse{
-			SendTo:     "0xa6bd216e8e5f463742f37aaab169cabce601835c",
-			SendType:   "ETH",
-			ReturnTo:   "16FdfRFVPUwiKAceRSqgEfn1tmB4sVUmLh",
-			ReturnType: "BTC",
-		}, nil
-	*/
 }
 
 // activeCoins returns a slice of all the currently active coins on shapeshift
@@ -119,6 +96,8 @@ const (
 	exchange
 )
 
+var activeState = loading
+
 func (s *state) transitionSelect() state {
 	selectScreen.Init()
 	return selection
@@ -143,11 +122,11 @@ func (s *state) transitionExchange(recAddr string) state {
 	return exchange
 }
 
-type header struct {
+type Header struct {
 	logo, fox *ui.Par
 }
 
-func newHeader(c *HeaderConfig) *header {
+func newHeader(c *HeaderConfig) *Header {
 	logo := ui.NewPar(SHAPESHIFT)
 	logo.X = c.LogoX
 	logo.Y = c.LogoY
@@ -164,22 +143,23 @@ func newHeader(c *HeaderConfig) *header {
 	fox.TextFgColor = c.FoxTextFgColor
 	fox.Border = false
 
-	return &header{logo: logo, fox: fox}
+	return &Header{logo: logo, fox: fox}
 }
 
-func (h *header) draw() []ui.Bufferer {
+func (h *Header) draw() []ui.Bufferer {
 	return []ui.Bufferer{h.logo, h.fox}
 }
 
 var (
 	selectScreen   *PairSelectorScreen
 	exchangeScreen *ExchangeScreen
+	header         *Header
 )
 
 func main() {
 	f, err := os.OpenFile("debugLog", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		Log.Println("error opening log file: %v", err)
+		Log.Printf("error opening log file: %v\n", err)
 		panic(err)
 	}
 	defer f.Close()
@@ -193,53 +173,56 @@ func main() {
 	defer ui.Close()
 
 	selectScreen = NewPairSelectorScreen(DefaultSelectLayout)
+	header = newHeader(DefaultHeaderConfig)
+	listenForEvents()
 
-	header := newHeader(DefaultHeaderConfig)
-	var curState = loading
-	first := true
+	draw(0)
+	activeState = activeState.transitionSelect()
+	draw(0)
+	ui.Loop()
+	fmt.Println("done")
+}
 
-	draw := func(t int) {
+// Screen drawing state machine
+func draw(t int) {
+	ui.Clear()
+
+	Log.Println("Current State: ", activeState)
+	switch activeState {
+	case loading:
+		Log.Println("Loading")
+		load := ui.NewPar("Loading...")
+		load.X = DefaultLoadingConfig.X
+		load.Y = DefaultLoadingConfig.Y
+		load.Width = DefaultLoadingConfig.Width
+		load.Height = DefaultLoadingConfig.Height
+		load.TextFgColor = ui.ColorYellow
+		load.BorderFg = ui.ColorRed
+
+		ui.Render(header.draw()...)
+		ui.Render(load)
+	case selection:
+		Log.Println("selecting")
+		ui.Render(selectScreen.Buffers()...)
+		ui.Render(header.draw()...)
+	case addressInput:
 		ui.Clear()
+		prompt := promptui.Prompt{
+			Label: "Destination Address",
+		}
+		res, err := prompt.Run()
+		if err != nil {
+			Log.Println(err)
+			panic(err)
+		}
+		Log.Println("ADDRESS:", res)
+		// TODO: Why does prompt ui cause the cursor to be visible after it runs
+		activeState = activeState.transitionExchange(res)
 
-		Log.Println("Current State: ", curState)
-		switch curState {
-		case loading:
-			load := ui.NewPar("Loading...")
-			load.X = DefaultLoadingConfig.X
-			load.Y = DefaultLoadingConfig.Y
-			load.Width = DefaultLoadingConfig.Width
-			load.Height = DefaultLoadingConfig.Height
-			load.TextFgColor = ui.ColorYellow
-			load.BorderFg = ui.ColorRed
+	case exchange:
 
-			ui.Render(header.draw()...)
-			ui.Render(load)
-		case selection:
-			ui.Render(selectScreen.Buffers()...)
-			ui.Render(header.draw()...)
-		case addressInput:
-			ui.Clear()
-			prompt := promptui.Prompt{
-				Label: "Destination Address",
-			}
-			res, err := prompt.Run()
-			if err != nil {
-				Log.Println(err)
-				panic(err)
-			}
-			Log.Println("ADDRESS:", res)
-			//shift, err := newShift(selectScreen.activePair(), res)
-			//if err != nil {
-			//Log.Println(err)
-			//panic(err)
-			//}
-			// TODO: Why does prompt ui cause the cursor to be visible after it runs
-			curState = curState.transitionExchange(res)
-
-		case exchange:
-			//shift, _ := newShift()
-			//exchangeScreen = NewExchangeScreen(shift)
-
+		// TODO: Move timer initialization to transition
+		/*
 			// if we have just transitioned to this page
 			// set up timer to update the time remaining
 			if first {
@@ -256,42 +239,31 @@ func main() {
 					}
 				}()
 			}
+		*/
 
-			// Delays are to ensure QR buffer gets flushed as it
-			// is drawn separately from the rest of the ui elements
-			ui.Clear()
-			ui.Render(header.draw()...)
-			ui.Render(exchangeScreen.Buffers()...)
-			time.Sleep(100 * time.Millisecond)
-			exchangeScreen.DrawQR()
-		}
+		// Delays are to ensure QR buffer gets flushed as it
+		// is drawn separately from the rest of the ui elements
+		ui.Clear()
+		ui.Render(header.draw()...)
+		ui.Render(exchangeScreen.Buffers()...)
+		time.Sleep(100 * time.Millisecond)
+		exchangeScreen.DrawQR()
 	}
-	ui.Handle("/sys/wnd/resize", func(e ui.Event) {
+}
 
-		//wnd, ok := e.Data.(ui.EvtWnd)
-		//if !ok {
-		//fmt.Println("HEEEEELLLLPPPP")
-		//}
-		//type EvtWnd struct {
-		//Width  int
-		//Height int
-		//}
-	})
+func listenForEvents() {
+
+	// Subscribe to keyboard event listeners
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		ui.StopLoop()
 	})
 	ui.Handle("/sys/kbd/<enter>", func(e ui.Event) {
-		//curState = exchange
-
-		//curState = addressInput
 		_, rec := selectScreen.SelectedCoins()
-		curState = curState.transitionExchange(loadDepositAddresses()[rec.Symbol])
-		//curState = curState.transitionExchange("0x6b67c94fc31510707F9c0f1281AaD5ec9a2EEFF0")
+		activeState = activeState.transitionExchange(loadDepositAddresses()[rec.Symbol])
 		draw(0)
-
 	})
-
 	ui.Handle("/sys/kbd/<up>", func(e ui.Event) {
+		Log.Println("EVENT UP")
 		selectScreen.Handle(e.Path)
 		draw(0)
 	})
@@ -303,14 +275,33 @@ func main() {
 		selectScreen.Handle(e.Path)
 		draw(0)
 	})
-
 	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
 		selectScreen.Handle(e.Path)
 		draw(0)
 	})
-	draw(0)
-	curState = curState.transitionSelect()
-	draw(0)
-	ui.Loop()
-	fmt.Println("done")
+	// Vim keybindings
+	ui.Handle("/sys/kbd/h", func(e ui.Event) {
+		selectScreen.Handle(e.Path)
+		draw(0)
+	})
+	ui.Handle("/sys/kbd/k", func(e ui.Event) {
+		selectScreen.Handle(e.Path)
+		draw(0)
+	})
+	ui.Handle("/sys/kbd/l", func(e ui.Event) {
+		selectScreen.Handle(e.Path)
+		draw(0)
+	})
+	ui.Handle("/sys/kbd/j", func(e ui.Event) {
+		selectScreen.Handle(e.Path)
+		draw(0)
+	})
+	ui.Handle("/sys/wnd/resize", func(e ui.Event) {
+		//wnd, ok := e.Data.(ui.EvtWnd)
+		//type EvtWnd struct {
+		//Width  int
+		//Height int
+		//}
+	})
+
 }

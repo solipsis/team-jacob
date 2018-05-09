@@ -64,10 +64,10 @@ func (p *pairStats) Buffers() []ui.Bufferer {
 		return []ui.Bufferer{p.min, p.max, p.rate, p.fee}
 	}
 	if p.rec == "XRP" || p.dep == "XRP" {
-		p.max.Text = "        DON'T"
+		p.max.Text = "        LOL "
 		p.min.Text = " NOPE NOPE NOPE!!!"
-		p.rate.Text = "        EVEN"
-		p.fee.Text = "       JOKE!!!"
+		p.rate.Text = "        NOT"
+		p.fee.Text = "       Happening"
 	} else {
 		p.max.Text = fmt.Sprintf("%f %s", p.info.Limit, p.dep)
 		p.min.Text = fmt.Sprintf("%f %s", p.info.Min, p.dep)

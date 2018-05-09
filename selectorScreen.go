@@ -138,18 +138,18 @@ func (s *PairSelectorScreen) Handle(e string) {
 	}
 
 	p := s.selector
-	if e == "/sys/kbd/<up>" {
+	if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
 		p.active.Prev()
 	}
-	if e == "/sys/kbd/<down>" {
+	if e == "/sys/kbd/<down>" || e == "/sys/kbd/j" {
 		p.active.Next()
 	}
-	if e == "/sys/kbd/<right>" {
+	if e == "/sys/kbd/<right>" || e == "/sys/kbd/l" {
 		p.active.background.BorderFg = ui.ColorWhite
 		p.active = p.receive
 		p.active.background.BorderFg = ui.ColorRed
 	}
-	if e == "/sys/kbd/<left>" {
+	if e == "/sys/kbd/<left>" || e == "/sys/kbd/h" {
 		p.active.background.BorderFg = ui.ColorWhite
 		p.active = p.deposit
 		p.active.background.BorderFg = ui.ColorRed
