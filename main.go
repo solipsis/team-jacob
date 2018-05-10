@@ -9,7 +9,6 @@ import (
 	"time"
 
 	ui "github.com/gizak/termui"
-	"github.com/manifoldco/promptui"
 	ss "github.com/solipsis/shapeshift"
 )
 
@@ -103,12 +102,36 @@ func (s *state) transitionSelect() state {
 	return selection
 }
 
+/*
+func getInput() string {
+	ui.Clear()
+	ui.StopLoop()
+	prompt := promptui.Prompt{
+		Label: "Destination Address",
+	}
+	res, err := prompt.Run()
+	if err != nil {
+		Log.Println(err)
+		panic(err)
+	}
+	Log.Println("ADDRESS:", res)
+	ui.Loop()
+	return res
+
+	// TODO: Why does prompt ui cause the cursor to be visible after it runs
+	//activeState = activeState.transitionExchange(res)
+
+}
+*/
+
 func (s *state) transitionExchange(recAddr string) state {
 	Log.Println("Transition Exchange. recAddr: ", recAddr)
 
 	// if destination Address set go to exchange
 	// if not prompt
 	if recAddr == "" {
+		inputScreen = NewInputScreen("Please enter an address")
+		//recAddr = getInput()
 		return addressInput
 	}
 
@@ -153,6 +176,7 @@ func (h *Header) draw() []ui.Bufferer {
 var (
 	selectScreen   *PairSelectorScreen
 	exchangeScreen *ExchangeScreen
+	inputScreen    *InputScreen
 	header         *Header
 )
 
@@ -172,6 +196,7 @@ func main() {
 	}
 	defer ui.Close()
 
+	inputScreen = NewInputScreen("Potato")
 	selectScreen = NewPairSelectorScreen(DefaultSelectLayout)
 	header = newHeader(DefaultHeaderConfig)
 	listenForEvents()
@@ -206,18 +231,8 @@ func draw(t int) {
 		ui.Render(selectScreen.Buffers()...)
 		ui.Render(header.draw()...)
 	case addressInput:
-		ui.Clear()
-		prompt := promptui.Prompt{
-			Label: "Destination Address",
-		}
-		res, err := prompt.Run()
-		if err != nil {
-			Log.Println(err)
-			panic(err)
-		}
-		Log.Println("ADDRESS:", res)
-		// TODO: Why does prompt ui cause the cursor to be visible after it runs
-		activeState = activeState.transitionExchange(res)
+		ui.Render(inputScreen.Buffers()...)
+		ui.Render(header.draw()...)
 
 	case exchange:
 
@@ -251,57 +266,39 @@ func draw(t int) {
 	}
 }
 
+type eventHandler interface {
+	Handle() string
+}
+
 func listenForEvents() {
 
 	// Subscribe to keyboard event listeners
+	ui.Handle("/sys/kbd", func(e ui.Event) {
+		Log.Println("ANY KEY", e.Path)
+	})
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		ui.StopLoop()
 	})
 	ui.Handle("/sys/kbd/<enter>", func(e ui.Event) {
-		_, rec := selectScreen.SelectedCoins()
-		activeState = activeState.transitionExchange(loadDepositAddresses()[rec.Symbol])
+		switch activeState {
+		case selection:
+			_, rec := selectScreen.SelectedCoins()
+			activeState = activeState.transitionExchange(loadDepositAddresses()[rec.Symbol])
+		case addressInput:
+			//inputScreen.Handle(e.Path)
+			activeState = activeState.transitionExchange(inputScreen.input.Text)
+		}
 		draw(0)
 	})
-	ui.Handle("/sys/kbd/<up>", func(e ui.Event) {
-		Log.Println("EVENT UP")
-		selectScreen.Handle(e.Path)
+	ui.Handle("/sys/kbd", func(e ui.Event) {
+		// TODO; addressInput backspace support
+		switch activeState {
+		case selection:
+			selectScreen.Handle(e.Path)
+		case addressInput:
+			inputScreen.Handle(e.Path)
+		}
 		draw(0)
-	})
-	ui.Handle("/sys/kbd/<left>", func(e ui.Event) {
-		selectScreen.Handle(e.Path)
-		draw(0)
-	})
-	ui.Handle("/sys/kbd/<right>", func(e ui.Event) {
-		selectScreen.Handle(e.Path)
-		draw(0)
-	})
-	ui.Handle("/sys/kbd/<down>", func(e ui.Event) {
-		selectScreen.Handle(e.Path)
-		draw(0)
-	})
-	// Vim keybindings
-	ui.Handle("/sys/kbd/h", func(e ui.Event) {
-		selectScreen.Handle(e.Path)
-		draw(0)
-	})
-	ui.Handle("/sys/kbd/k", func(e ui.Event) {
-		selectScreen.Handle(e.Path)
-		draw(0)
-	})
-	ui.Handle("/sys/kbd/l", func(e ui.Event) {
-		selectScreen.Handle(e.Path)
-		draw(0)
-	})
-	ui.Handle("/sys/kbd/j", func(e ui.Event) {
-		selectScreen.Handle(e.Path)
-		draw(0)
-	})
-	ui.Handle("/sys/wnd/resize", func(e ui.Event) {
-		//wnd, ok := e.Data.(ui.EvtWnd)
-		//type EvtWnd struct {
-		//Width  int
-		//Height int
-		//}
 	})
 
 }

@@ -94,7 +94,6 @@ func addPairSelector(r coinRing) *pairSelector {
 }
 
 func formatSelector(pair *pairSelector, layout *SelectLayout) {
-	// TODO: better layout system
 
 	pair.deposit.active.X = layout.wheelX
 	pair.deposit.active.Y = layout.wheelY + 4
@@ -132,6 +131,7 @@ func (p *PairSelectorScreen) Buffers() []ui.Bufferer {
 
 // Handle responds to select UI events
 func (s *PairSelectorScreen) Handle(e string) {
+	Log.Println("Select Input", e)
 	// Screen must be initialized before responding to events
 	if s == nil {
 		return
