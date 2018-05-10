@@ -4,87 +4,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
-	"strings"
 	"time"
 
 	ui "github.com/gizak/termui"
-	ss "github.com/solipsis/shapeshift"
 )
 
 var (
 	Log *log.Logger
 )
-
-type Coin struct {
-	Name      string
-	Symbol    string
-	Available bool
-}
-
-type shift struct {
-	*ss.NewTransactionResponse
-	receiveAddr string
-}
-
-// extract the fields we need from a shapeshift coin response object
-func toCoin(sc ss.Coin) *Coin {
-	return &Coin{
-		Name:      sc.Name,
-		Symbol:    sc.Symbol,
-		Available: sc.Status == "Available",
-	}
-}
-
-// initiate a new shift with Shapeshift
-func newShift(pair, recAddr string) (*shift, error) {
-
-	//to := "0xa6bd216e8e5f463742f37aaab169cabce601835c"
-	s := ss.New{
-		//TODO; check other similar method on select screen
-		Pair:      pair,
-		ToAddress: recAddr,
-	}
-	Log.Println("Pair: ", selectScreen.activePair())
-
-	response, err := s.Shift()
-	if err != nil {
-		Log.Println(err)
-		panic(err)
-	}
-	Log.Println("received from ss ", response)
-
-	if response.ErrorMsg() != "" {
-		Log.Println(response.ErrorMsg())
-		panic(response.ErrorMsg())
-	}
-	return &shift{response, recAddr}, nil
-}
-
-// activeCoins returns a slice of all the currently active coins on shapeshift
-func activeCoins() ([]*Coin, error) {
-	ssCoins, err := ss.CoinsAsList()
-	active := make([]*Coin, 0)
-	if err != nil {
-		// Add 2 dummy coins so the scroll wheels still function
-		active = append(active, &Coin{Name: "Unable to contact Shapeshift"})
-		active = append(active, &Coin{Name: "Unable to contact Shapeshift"})
-		return active, err
-	}
-
-	// Ignore any coins that aren't available
-	for _, c := range ssCoins {
-		if c.Status == "available" {
-			active = append(active, toCoin(c))
-		}
-	}
-
-	// Sort alphabetically
-	sort.Slice(active, func(i, j int) bool {
-		return strings.ToLower(active[i].Name) < strings.ToLower(active[j].Name)
-	})
-	return active, nil
-}
 
 type state int
 
@@ -97,32 +24,92 @@ const (
 
 var activeState = loading
 
+// ui elements
+var (
+	selectScreen   *PairSelectorScreen
+	exchangeScreen *ExchangeScreen
+	inputScreen    *InputScreen
+	header         *Header
+)
+
+func main() {
+	// debug logging
+	f, err := os.OpenFile("debugLog", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		Log.Printf("error opening log file: %v\n", err)
+		panic(err)
+	}
+	defer f.Close()
+
+	Log = log.New(f, "", 0)
+	Log.SetOutput(f)
+
+	// start ui thread
+	if err := ui.Init(); err != nil {
+		panic(err)
+	}
+	defer ui.Close()
+
+	header = newHeader(DefaultHeaderConfig)
+	listenForEvents()
+
+	draw(0)
+	activeState = activeState.transitionSelect()
+	draw(0)
+	ui.Loop()
+	fmt.Println("done")
+}
+
+// Screen drawing state machine
+func draw(t int) {
+	Log.Println("Current State: ", activeState)
+
+	//ui.Clear()
+	ui.Render(header.draw()...)
+
+	switch activeState {
+	case loading:
+		load := ui.NewPar("Loading...")
+		load.X = DefaultLoadingConfig.X
+		load.Y = DefaultLoadingConfig.Y
+		load.Width = DefaultLoadingConfig.Width
+		load.Height = DefaultLoadingConfig.Height
+		load.TextFgColor = ui.ColorYellow
+		load.BorderFg = ui.ColorRed
+
+		//ui.Render(header.draw()...)
+		ui.Render(load)
+
+	case selection:
+		ui.Render(selectScreen.Buffers()...)
+		//ui.Render(header.draw()...)
+
+	case addressInput:
+		ui.Render(inputScreen.Buffers()...)
+		//ui.Render(header.draw()...)
+
+	case exchange:
+		// Delays are to ensure QR buffer gets flushed as it
+		// is drawn separately from the rest of the ui elements
+		//ui.Render(header.draw()...)
+		ui.Render(exchangeScreen.Buffers()...)
+		time.Sleep(100 * time.Millisecond)
+		exchangeScreen.DrawQR()
+	}
+}
+
 func (s *state) transitionSelect() state {
+	selectScreen = NewPairSelectorScreen(DefaultSelectLayout)
 	selectScreen.Init()
+	ui.Clear()
 	return selection
 }
 
-/*
-func getInput() string {
+func (s *state) transitionInput(prompt string) state {
+	inputScreen = NewInputScreen(prompt)
 	ui.Clear()
-	ui.StopLoop()
-	prompt := promptui.Prompt{
-		Label: "Destination Address",
-	}
-	res, err := prompt.Run()
-	if err != nil {
-		Log.Println(err)
-		panic(err)
-	}
-	Log.Println("ADDRESS:", res)
-	ui.Loop()
-	return res
-
-	// TODO: Why does prompt ui cause the cursor to be visible after it runs
-	//activeState = activeState.transitionExchange(res)
-
+	return addressInput
 }
-*/
 
 func (s *state) transitionExchange(recAddr string) state {
 	Log.Println("Transition Exchange. recAddr: ", recAddr)
@@ -130,9 +117,7 @@ func (s *state) transitionExchange(recAddr string) state {
 	// if destination Address set go to exchange
 	// if not prompt
 	if recAddr == "" {
-		inputScreen = NewInputScreen("Please enter an address")
-		//recAddr = getInput()
-		return addressInput
+		return s.transitionInput("Please enter an address")
 	}
 
 	shift, err := newShift(selectScreen.activePair(), recAddr)
@@ -141,7 +126,19 @@ func (s *state) transitionExchange(recAddr string) state {
 		panic(err)
 	}
 
+	// if we have just transitioned to this page
+	// set up timer to update the time remaining
+	ticker := time.NewTicker(1 * time.Second)
+	go func() {
+		for range ticker.C {
+			if activeState == exchange {
+				ui.Render(exchangeScreen.Buffers()...)
+			}
+		}
+	}()
+
 	exchangeScreen = NewExchangeScreen(shift)
+	ui.Clear()
 	return exchange
 }
 
@@ -173,99 +170,6 @@ func (h *Header) draw() []ui.Bufferer {
 	return []ui.Bufferer{h.logo, h.fox}
 }
 
-var (
-	selectScreen   *PairSelectorScreen
-	exchangeScreen *ExchangeScreen
-	inputScreen    *InputScreen
-	header         *Header
-)
-
-func main() {
-	f, err := os.OpenFile("debugLog", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		Log.Printf("error opening log file: %v\n", err)
-		panic(err)
-	}
-	defer f.Close()
-
-	Log = log.New(f, "", 0)
-	Log.SetOutput(f)
-
-	if err := ui.Init(); err != nil {
-		panic(err)
-	}
-	defer ui.Close()
-
-	inputScreen = NewInputScreen("Potato")
-	selectScreen = NewPairSelectorScreen(DefaultSelectLayout)
-	header = newHeader(DefaultHeaderConfig)
-	listenForEvents()
-
-	draw(0)
-	activeState = activeState.transitionSelect()
-	draw(0)
-	ui.Loop()
-	fmt.Println("done")
-}
-
-// Screen drawing state machine
-func draw(t int) {
-	ui.Clear()
-
-	Log.Println("Current State: ", activeState)
-	switch activeState {
-	case loading:
-		Log.Println("Loading")
-		load := ui.NewPar("Loading...")
-		load.X = DefaultLoadingConfig.X
-		load.Y = DefaultLoadingConfig.Y
-		load.Width = DefaultLoadingConfig.Width
-		load.Height = DefaultLoadingConfig.Height
-		load.TextFgColor = ui.ColorYellow
-		load.BorderFg = ui.ColorRed
-
-		ui.Render(header.draw()...)
-		ui.Render(load)
-	case selection:
-		Log.Println("selecting")
-		ui.Render(selectScreen.Buffers()...)
-		ui.Render(header.draw()...)
-	case addressInput:
-		ui.Render(inputScreen.Buffers()...)
-		ui.Render(header.draw()...)
-
-	case exchange:
-
-		// TODO: Move timer initialization to transition
-		/*
-			// if we have just transitioned to this page
-			// set up timer to update the time remaining
-			if first {
-				first = false
-				ticker := time.NewTicker(1 * time.Second)
-
-				go func() {
-					for range ticker.C {
-						ui.Clear()
-						ui.Render(header.draw()...)
-						ui.Render(exchangeScreen.Buffers()...)
-						time.Sleep(100 * time.Millisecond)
-						exchangeScreen.DrawQR()
-					}
-				}()
-			}
-		*/
-
-		// Delays are to ensure QR buffer gets flushed as it
-		// is drawn separately from the rest of the ui elements
-		ui.Clear()
-		ui.Render(header.draw()...)
-		ui.Render(exchangeScreen.Buffers()...)
-		time.Sleep(100 * time.Millisecond)
-		exchangeScreen.DrawQR()
-	}
-}
-
 type eventHandler interface {
 	Handle() string
 }
@@ -285,7 +189,6 @@ func listenForEvents() {
 			_, rec := selectScreen.SelectedCoins()
 			activeState = activeState.transitionExchange(loadDepositAddresses()[rec.Symbol])
 		case addressInput:
-			//inputScreen.Handle(e.Path)
 			activeState = activeState.transitionExchange(inputScreen.input.Text)
 		}
 		draw(0)
@@ -298,6 +201,10 @@ func listenForEvents() {
 		case addressInput:
 			inputScreen.Handle(e.Path)
 		}
+		draw(0)
+	})
+	// Redraw if user resizes gui
+	ui.Handle("/sys/wnd/resize", func(e ui.Event) {
 		draw(0)
 	})
 
