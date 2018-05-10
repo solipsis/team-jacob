@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"sort"
 	"strings"
 
@@ -39,14 +40,12 @@ func newShift(pair, recAddr string) (*shift, error) {
 
 	response, err := s.Shift()
 	if err != nil {
-		Log.Println(err)
-		panic(err)
+		return nil, err
 	}
 	Log.Println("received from ss ", response)
 
 	if response.ErrorMsg() != "" {
-		Log.Println(response.ErrorMsg())
-		panic(response.ErrorMsg())
+		return nil, errors.New(response.ErrorMsg())
 	}
 	return &shift{response, recAddr}, nil
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -9,23 +8,24 @@ import (
 	ui "github.com/gizak/termui"
 )
 
-var (
-	Log *log.Logger
-)
-
+// ui state
 type state int
 
 const (
 	loading state = iota
+	encounteredError
 	selection
 	addressInput
 	exchange
 )
 
 var activeState = loading
+var Log *log.Logger
 
 // ui elements
 var (
+	loadingScreen  *LoadingScreen
+	errorScreen    *ErrorScreen
 	selectScreen   *PairSelectorScreen
 	exchangeScreen *ExchangeScreen
 	inputScreen    *InputScreen
@@ -40,7 +40,6 @@ func main() {
 		panic(err)
 	}
 	defer f.Close()
-
 	Log = log.New(f, "", 0)
 	Log.SetOutput(f)
 
@@ -50,52 +49,57 @@ func main() {
 	}
 	defer ui.Close()
 
+	// Begin by loading the selection screen
 	header = newHeader(DefaultHeaderConfig)
-	listenForEvents()
-
+	activeState = activeState.transitionLoading("Loading...")
 	draw(0)
 	activeState = activeState.transitionSelect()
 	draw(0)
+
+	// Loop until ui exits
+	listenForEvents()
 	ui.Loop()
-	fmt.Println("done")
 }
 
 // Screen drawing state machine
 func draw(t int) {
 	Log.Println("Current State: ", activeState)
 
-	//ui.Clear()
 	ui.Render(header.draw()...)
 
 	switch activeState {
 	case loading:
-		load := ui.NewPar("Loading...")
-		load.X = DefaultLoadingConfig.X
-		load.Y = DefaultLoadingConfig.Y
-		load.Width = DefaultLoadingConfig.Width
-		load.Height = DefaultLoadingConfig.Height
-		load.TextFgColor = ui.ColorYellow
-		load.BorderFg = ui.ColorRed
+		ui.Render(loadingScreen.Buffers()...)
 
-		//ui.Render(header.draw()...)
-		ui.Render(load)
+	case encounteredError:
+		ui.Render(errorScreen.Buffers()...)
 
 	case selection:
 		ui.Render(selectScreen.Buffers()...)
-		//ui.Render(header.draw()...)
 
 	case addressInput:
 		ui.Render(inputScreen.Buffers()...)
-		//ui.Render(header.draw()...)
 
 	case exchange:
 		// Delays are to ensure QR buffer gets flushed as it
 		// is drawn separately from the rest of the ui elements
-		//ui.Render(header.draw()...)
 		ui.Render(exchangeScreen.Buffers()...)
 		time.Sleep(100 * time.Millisecond)
 		exchangeScreen.DrawQR()
 	}
+}
+
+// State transitions
+func (s *state) transitionLoading(text string) state {
+	loadingScreen = NewLoadingScreen(text)
+	ui.Clear()
+	return loading
+}
+
+func (s *state) transitionError(err error) state {
+	errorScreen = NewErrorScreen(err.Error())
+	ui.Clear()
+	return encounteredError
 }
 
 func (s *state) transitionSelect() state {
@@ -115,15 +119,14 @@ func (s *state) transitionExchange(recAddr string) state {
 	Log.Println("Transition Exchange. recAddr: ", recAddr)
 
 	// if destination Address set go to exchange
-	// if not prompt
+	// if not prompt the user for an address
 	if recAddr == "" {
 		return s.transitionInput("Please enter an address")
 	}
 
 	shift, err := newShift(selectScreen.activePair(), recAddr)
 	if err != nil {
-		Log.Println(err)
-		panic(err)
+		return s.transitionError(err)
 	}
 
 	// if we have just transitioned to this page
@@ -140,34 +143,6 @@ func (s *state) transitionExchange(recAddr string) state {
 	exchangeScreen = NewExchangeScreen(shift)
 	ui.Clear()
 	return exchange
-}
-
-type Header struct {
-	logo, fox *ui.Par
-}
-
-func newHeader(c *HeaderConfig) *Header {
-	logo := ui.NewPar(SHAPESHIFT)
-	logo.X = c.LogoX
-	logo.Y = c.LogoY
-	logo.Width = c.LogoWidth
-	logo.Height = c.LogoHeight
-	logo.TextFgColor = c.LogoTextFgColor
-	logo.Border = false
-
-	fox := ui.NewPar(FOX)
-	fox.X = c.FoxX
-	fox.Y = c.FoxY
-	fox.Width = c.FoxWidth
-	fox.Height = c.FoxHeight
-	fox.TextFgColor = c.FoxTextFgColor
-	fox.Border = false
-
-	return &Header{logo: logo, fox: fox}
-}
-
-func (h *Header) draw() []ui.Bufferer {
-	return []ui.Bufferer{h.logo, h.fox}
 }
 
 type eventHandler interface {
@@ -190,6 +165,8 @@ func listenForEvents() {
 			activeState = activeState.transitionExchange(loadDepositAddresses()[rec.Symbol])
 		case addressInput:
 			activeState = activeState.transitionExchange(inputScreen.input.Text)
+		case encounteredError:
+			ui.StopLoop()
 		}
 		draw(0)
 	})

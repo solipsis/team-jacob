@@ -41,3 +41,41 @@ func (i *InputScreen) Handle(e string) {
 	// append the character to the text
 	i.input.Text += arr[3]
 }
+
+type LoadingScreen struct {
+	load *ui.Par
+}
+
+func NewLoadingScreen(text string) *LoadingScreen {
+	load := ui.NewPar(text)
+	load.X = DefaultLoadingConfig.X
+	load.Y = DefaultLoadingConfig.Y
+	load.Width = DefaultLoadingConfig.Width
+	load.Height = DefaultLoadingConfig.Height
+	load.TextFgColor = ui.ColorYellow
+	load.BorderFg = ui.ColorRed
+	return &LoadingScreen{load: load}
+}
+
+func (l *LoadingScreen) Buffers() []ui.Bufferer {
+	return []ui.Bufferer{l.load}
+}
+
+type ErrorScreen struct {
+	err *ui.Par
+}
+
+func NewErrorScreen(text string) *ErrorScreen {
+	err := ui.NewPar(text)
+	err.X = DefaultLoadingConfig.X
+	err.Y = DefaultLoadingConfig.Y
+	err.Width = len(text) + 4
+	err.Height = DefaultLoadingConfig.Height
+	err.TextFgColor = ui.ColorYellow
+	err.BorderFg = ui.ColorRed
+	return &ErrorScreen{err: err}
+}
+
+func (e *ErrorScreen) Buffers() []ui.Bufferer {
+	return []ui.Bufferer{e.err}
+}
