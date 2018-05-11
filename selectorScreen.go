@@ -70,9 +70,9 @@ func (p *PairSelectorScreen) Init() {
 	div.Width = 8
 	p.divider = div
 
-	msg := " Use <arrow keys> to select 2 coins and <Enter> to initiate a Shift "
+	msg := " Use <arrow keys> or <hjkl> to select 2 coins and <Enter> to initiate a Shift "
 	help := ui.NewPar(msg)
-	help.X = 13
+	help.X = 7
 	help.Height = 3
 	help.Width = len(msg) + 2
 	help.Y = 24

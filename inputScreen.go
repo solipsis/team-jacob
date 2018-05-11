@@ -33,6 +33,12 @@ func (i *InputScreen) Handle(e string) {
 		return
 	}
 
+	Log.Println(e)
+	if strings.HasSuffix(e, "<backspace>") || strings.HasSuffix(e, "<delete>") {
+		i.input.Text = i.input.Text[:len(i.input.Text)-1]
+		return
+	}
+
 	arr := strings.Split(e, "/")
 	if len(arr) < 4 || len(arr[3]) > 1 {
 		return

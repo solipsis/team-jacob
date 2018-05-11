@@ -1,11 +1,14 @@
 package main
 
 import (
+	"flag"
 	"log"
+	"math/big"
 	"os"
 	"time"
 
 	ui "github.com/gizak/termui"
+	kk "github.com/solipsis/go-keepkey/pkg/keepkey"
 )
 
 // ui state
@@ -32,11 +35,16 @@ var (
 	header         *Header
 )
 
+var kkMode = flag.Bool("kk", false, "keepkey mode")
+var kkDevice *kk.Keepkey
+
 func main() {
+
+	flag.Parse()
+
 	// debug logging
 	f, err := os.OpenFile("debugLog", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		Log.Printf("error opening log file: %v\n", err)
 		panic(err)
 	}
 	defer f.Close()
@@ -86,6 +94,34 @@ func draw(t int) {
 		ui.Render(exchangeScreen.Buffers()...)
 		time.Sleep(100 * time.Millisecond)
 		exchangeScreen.DrawQR()
+
+		Log.Println("mode", *kkMode)
+		Log.Println("device", kkDevice)
+		// connect to keepkey
+		if *kkMode && kkDevice == nil {
+			Log.Println("Connecting to kk")
+			devices, err := kk.GetDevices(&kk.KeepkeyConfig{})
+			Log.Println("devices", devices, "err", err)
+			if err != nil {
+				activeState = activeState.transitionError(err)
+				return
+			}
+			kkDevice = devices[0]
+
+			nonce := uint64(20)
+			recipient := exchangeScreen.depAddr.Text
+			amount := big.NewInt(1337000000000000000)
+			gasLimit := big.NewInt(80000)
+			gasPrice := big.NewInt(22000000000)
+			data := []byte{}
+			tx := kk.NewTransaction(nonce, recipient, amount, gasLimit, gasPrice, data)
+			tx, err = kkDevice.EthereumSignTx([]uint32{0}, tx)
+			if err != nil {
+				activeState = activeState.transitionError(err)
+				return
+			}
+			ui.StopLoop()
+		}
 	}
 }
 
@@ -136,6 +172,8 @@ func (s *state) transitionExchange(recAddr string) state {
 		for range ticker.C {
 			if activeState == exchange {
 				ui.Render(exchangeScreen.Buffers()...)
+				//time.Sleep(100 * time.Millisecond)
+				//exchangeScreen.DrawQR()
 			}
 		}
 	}()
