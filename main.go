@@ -100,7 +100,7 @@ func draw(t int) {
 		// connect to keepkey
 		if *kkMode && kkDevice == nil {
 			Log.Println("Connecting to kk")
-			devices, err := kk.GetDevices(&kk.KeepkeyConfig{})
+			devices, err := kk.GetDevices()
 			Log.Println("devices", devices, "err", err)
 			if err != nil {
 				activeState = activeState.transitionError(err)
@@ -151,6 +151,7 @@ func (s *state) transitionInput(prompt string) state {
 	return addressInput
 }
 
+//func (s *state) transitionExchange(recAddr, amount string, precise bool) state {
 func (s *state) transitionExchange(recAddr string) state {
 	Log.Println("Transition Exchange. recAddr: ", recAddr)
 
@@ -209,7 +210,6 @@ func listenForEvents() {
 		draw(0)
 	})
 	ui.Handle("/sys/kbd", func(e ui.Event) {
-		// TODO; addressInput backspace support
 		switch activeState {
 		case selection:
 			selectScreen.Handle(e.Path)

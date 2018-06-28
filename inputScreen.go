@@ -29,13 +29,13 @@ func (i *InputScreen) Buffers() []ui.Bufferer {
 
 func (i *InputScreen) Handle(e string) {
 
-	if i == nil {
-		return
-	}
-
 	Log.Println(e)
-	if strings.HasSuffix(e, "<backspace>") || strings.HasSuffix(e, "<delete>") {
-		i.input.Text = i.input.Text[:len(i.input.Text)-1]
+
+	// All the keys that could be used to "undo"
+	if strings.HasSuffix(e, "<backspace>") || strings.HasSuffix(e, "<delete>") || strings.HasSuffix(e, "C-8") {
+		if len(i.input.Text) > 0 {
+			i.input.Text = i.input.Text[:len(i.input.Text)-1]
+		}
 		return
 	}
 
@@ -54,7 +54,7 @@ type LoadingScreen struct {
 
 func NewLoadingScreen(text string) *LoadingScreen {
 	load := ui.NewPar(text)
-	load.X = DefaultLoadingConfig.X
+	load.X = DefaultLoadingConfig.X + 10
 	load.Y = DefaultLoadingConfig.Y
 	load.Width = DefaultLoadingConfig.Width
 	load.Height = DefaultLoadingConfig.Height
@@ -73,7 +73,7 @@ type ErrorScreen struct {
 
 func NewErrorScreen(text string) *ErrorScreen {
 	err := ui.NewPar(text)
-	err.X = DefaultLoadingConfig.X
+	err.X = DefaultLoadingConfig.X - 15
 	err.Y = DefaultLoadingConfig.Y
 	err.Width = len(text) + 4
 	err.Height = DefaultLoadingConfig.Height

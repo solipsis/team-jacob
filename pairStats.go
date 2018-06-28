@@ -86,18 +86,3 @@ func uiPar(text, bLabel string, x, y, width, height int) *ui.Par {
 	par.Height = height
 	return par
 }
-
-/*
-func (p *pairStats) statsStrings() []string {
-	key := p.dep + "_" + p.rec
-	info, ok := p.marketInfo[key]
-
-	stats := make([]string, 0)
-	if !ok {
-		stats = append(stats, "This pair is not available")
-		return stats
-	}
-	fmt.Println(info)
-	return stats
-}
-*/

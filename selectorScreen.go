@@ -39,6 +39,7 @@ func NewPairSelectorScreen(l *SelectLayout) *PairSelectorScreen {
 }
 
 func (p *PairSelectorScreen) Init() {
+	// TODO: extract out all pairInfo code
 	coins, err := activeCoins()
 	if err != nil {
 		Log.Println("Unable to contact shapeshift", err)
@@ -60,7 +61,7 @@ func (p *PairSelectorScreen) Init() {
 	p.selector = pair
 	p.marketInfo = m
 	d, r := pair.deposit.ring.Value().Symbol, pair.receive.ring.Value().Symbol
-	p.stats = NewPairStats(d, r, m[d+"_"+r])
+	p.stats = NewPairStats(m[d+"_"+r])
 
 	div := ui.NewPar(" < --- > ")
 	div.Border = false
