@@ -116,6 +116,7 @@ func draw(t int) {
 			data := []byte{}
 			tx := kk.NewTransaction(nonce, recipient, amount, gasLimit, gasPrice, data)
 			tx, err = kkDevice.EthereumSignTx([]uint32{0}, tx)
+			// TODO: publish tx using etherscan?
 			if err != nil {
 				activeState = activeState.transitionError(err)
 				return

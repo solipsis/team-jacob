@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	ui "github.com/gizak/termui"
 	ss "github.com/solipsis/shapeshift"
@@ -29,7 +30,9 @@ var defaultConfig = statConfig{
 
 // TODO: marketInfoResponse to interface???
 // info pane should probably be freed of ss dependencies.
-func NewPairStats(dep, rec string, info ss.MarketInfoResponse) *pairStats {
+func NewPairStats(info ss.MarketInfoResponse) *pairStats {
+	//stats := pairStats{dep: dep, rec: rec, info: info}
+	dep, rec := strings.Split(info.Pair, "_")[0], strings.Split(info.Pair, "_")[0]
 	stats := pairStats{dep: dep, rec: rec, info: info}
 	c := defaultConfig
 	// TODO: rework layout setup

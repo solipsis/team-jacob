@@ -26,6 +26,7 @@ type PairSelectorScreen struct {
 	divider    *ui.Par
 	info       *ui.Par
 	help       *ui.Par
+	legend     *legend
 	layout     *SelectLayout
 	marketInfo map[string]ss.MarketInfoResponse
 }
@@ -70,6 +71,12 @@ func (p *PairSelectorScreen) Init() {
 	div.Height = 3
 	div.Width = 8
 	p.divider = div
+
+	l := new(legend)
+	l.entries = append(l.entries, entry{key: "Q", text: "Quit"})
+	l.entries = append(l.entries, entry{key: "P", text: "Precise"})
+	l.entries = append(l.entries, entry{key: "K", text: "Keepkey Mode"})
+	p.legend = l
 
 	msg := " Use <arrow keys> or <hjkl> to select 2 coins and <Enter> to initiate a Shift "
 	help := ui.NewPar(msg)
@@ -127,6 +134,7 @@ func (p *PairSelectorScreen) Buffers() []ui.Bufferer {
 	bufs = append(bufs, p.stats.Buffers()...)
 	bufs = append(bufs, p.divider)
 	bufs = append(bufs, p.help)
+	bufs = append(bufs, p.legend.Buffers()...)
 	return bufs
 }
 
