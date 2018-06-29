@@ -1,6 +1,8 @@
 package main
 
 import (
+	"math/rand"
+
 	ui "github.com/gizak/termui"
 	ss "github.com/solipsis/shapeshift"
 )
@@ -21,14 +23,15 @@ var DefaultSelectLayout = &SelectLayout{
 }
 
 type PairSelectorScreen struct {
-	selector   *pairSelector
-	stats      *pairStats
-	divider    *ui.Par
-	info       *ui.Par
-	help       *ui.Par
-	legend     *legend
-	layout     *SelectLayout
-	marketInfo map[string]ss.MarketInfoResponse
+	selector     *pairSelector
+	stats        *pairStats
+	typeSelector *ringSelector
+	divider      *ui.Par
+	info         *ui.Par
+	help         *ui.Par
+	legend       *legend
+	layout       *SelectLayout
+	marketInfo   map[string]ss.MarketInfoResponse
 }
 
 type pairSelector struct {
@@ -39,6 +42,13 @@ func NewPairSelectorScreen(l *SelectLayout) *PairSelectorScreen {
 	return &PairSelectorScreen{layout: l}
 }
 
+type test struct {
+	str string
+}
+
+func (t *test) Text() string {
+	return t.str
+}
 func (p *PairSelectorScreen) Init() {
 	// TODO: extract out all pairInfo code
 	coins, err := activeCoins()
@@ -63,6 +73,9 @@ func (p *PairSelectorScreen) Init() {
 	p.marketInfo = m
 	d, r := pair.deposit.ring.Value().Symbol, pair.receive.ring.Value().Symbol
 	p.stats = NewPairStats(m[d+"_"+r])
+
+	arr := []ringItem{&test{"Quick"}, &test{"Precise"}, &test{"I'm feeling lucky"}}
+	p.typeSelector = NewRingSelector(arr, "TEST", 30, 40, 3)
 
 	div := ui.NewPar(" < --- > ")
 	div.Border = false
@@ -121,6 +134,13 @@ func (p *PairSelectorScreen) SelectedCoins() (dep, rec *Coin) {
 
 // TODO: remove dependency on ui???
 func (p *pairSelector) Buffers() []ui.Bufferer {
+	for i := 0; i < rand.Intn(10); i++ {
+		p.deposit.Next()
+	}
+	for i := 0; i < rand.Intn(10); i++ {
+		p.receive.Next()
+	}
+
 	bufs := p.deposit.Buffers()
 	bufs = append(bufs, p.receive.Buffers()...)
 	return bufs
@@ -135,6 +155,7 @@ func (p *PairSelectorScreen) Buffers() []ui.Bufferer {
 	bufs = append(bufs, p.divider)
 	bufs = append(bufs, p.help)
 	bufs = append(bufs, p.legend.Buffers()...)
+	bufs = append(bufs, p.typeSelector.Buffers()...)
 	return bufs
 }
 
