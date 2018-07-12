@@ -148,6 +148,7 @@ func (s *state) transitionSelect() state {
 
 func (s *state) transitionInput(prompt string) state {
 	inputScreen = NewInputScreen(prompt)
+	inputScreen.stats = selectScreen.stats // TODO: cleaner data transfer
 	ui.Clear()
 	return addressInput
 }

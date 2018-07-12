@@ -9,6 +9,7 @@ import (
 type InputScreen struct {
 	prompt string
 	input  *ui.Par
+	stats  *pairStats
 }
 
 func NewInputScreen(prompt string) *InputScreen {
@@ -24,7 +25,9 @@ func NewInputScreen(prompt string) *InputScreen {
 }
 
 func (i *InputScreen) Buffers() []ui.Bufferer {
-	return []ui.Bufferer{i.input}
+	bufs := []ui.Bufferer{i.input}
+	bufs = append(bufs, i.stats.Buffers()...)
+	return bufs
 }
 
 func (i *InputScreen) Handle(e string) {
