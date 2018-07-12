@@ -30,6 +30,7 @@ func (r *ringSelector) Selected() ringItem {
 
 func (r *ringSelector) Buffers() []ui.Bufferer {
 	r.background.Items = r.backgroundItems()
+	r.active.Items = []string{r.background.Items[len(r.background.Items)/2]}
 	return []ui.Bufferer{r.background, r.active}
 }
 

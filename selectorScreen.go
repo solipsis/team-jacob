@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand"
+	"time"
 
 	ui "github.com/gizak/termui"
 	ss "github.com/solipsis/shapeshift"
@@ -17,21 +18,23 @@ var DefaultSelectLayout = &SelectLayout{
 	infoY:      40,
 	infoHeight: 3,
 	infoWidth:  40,
-	wheelX:     21,
+	wheelX:     37,
 	wheelWidth: 21,
 	wheelY:     12,
 }
 
 type PairSelectorScreen struct {
-	selector     *pairSelector
-	stats        *pairStats
-	typeSelector *ringSelector
-	divider      *ui.Par
-	info         *ui.Par
-	help         *ui.Par
-	legend       *legend
-	layout       *SelectLayout
-	marketInfo   map[string]ss.MarketInfoResponse
+	selector       *pairSelector
+	stats          *pairStats
+	typeSelector   *ringSelector
+	divider        *ui.Par
+	info           *ui.Par
+	help           *ui.Par
+	legend         *legend
+	layout         *SelectLayout
+	luckyTicker    *time.Ticker
+	marketInfo     map[string]ss.MarketInfoResponse
+	jankDrawToggle bool
 }
 
 type pairSelector struct {
@@ -74,10 +77,10 @@ func (p *PairSelectorScreen) Init() {
 	d, r := pair.deposit.ring.Value().Symbol, pair.receive.ring.Value().Symbol
 	p.stats = NewPairStats(m[d+"_"+r])
 
-	arr := []ringItem{&test{"Quick"}, &test{"Precise"}, &test{"I'm feeling lucky"}}
-	p.typeSelector = NewRingSelector(arr, "TEST", 30, 40, 3)
+	arr := []ringItem{&test{"Quick"}, &test{"Precise"}, &test{"I'm Feeling Lucky"}}
+	p.typeSelector = NewRingSelector(arr, "Order Type", 6, 14, 3)
 
-	div := ui.NewPar(" < --- > ")
+	div := ui.NewPar(" ----- > ")
 	div.Border = false
 	div.Y = p.layout.wheelY + 5
 	div.X = p.layout.wheelX + p.layout.wheelWidth
@@ -134,12 +137,6 @@ func (p *PairSelectorScreen) SelectedCoins() (dep, rec *Coin) {
 
 // TODO: remove dependency on ui???
 func (p *pairSelector) Buffers() []ui.Bufferer {
-	for i := 0; i < rand.Intn(10); i++ {
-		p.deposit.Next()
-	}
-	for i := 0; i < rand.Intn(10); i++ {
-		p.receive.Next()
-	}
 
 	bufs := p.deposit.Buffers()
 	bufs = append(bufs, p.receive.Buffers()...)
@@ -159,29 +156,96 @@ func (p *PairSelectorScreen) Buffers() []ui.Bufferer {
 	return bufs
 }
 
+// TODO: Remove this once I refactor coinwheels to use new list format
+// TODO; list of menus. set active colors for active ones
+// set inactive colors for others
+var activeMenu = deposit
+
+const (
+	orderType int = iota
+	deposit
+	receive
+)
+
 // Handle responds to select UI events
 func (s *PairSelectorScreen) Handle(e string) {
 	Log.Println("Select Input", e)
-	// Screen must be initialized before responding to events
-	if s == nil {
-		return
-	}
 
-	p := s.selector
-	if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
-		p.active.Prev()
+	// TODO: completely redo this after wheel interface migration
+	if activeMenu == deposit {
+		p := s.selector
+		if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
+			p.active.Prev()
+		}
+		if e == "/sys/kbd/<down>" || e == "/sys/kbd/j" {
+			p.active.Next()
+		}
+		if e == "/sys/kbd/<right>" || e == "/sys/kbd/l" {
+			activeMenu = receive
+			p.active.background.BorderFg = ui.ColorWhite
+			p.active = p.receive
+			p.active.background.BorderFg = ui.ColorRed
+		}
+		if e == "/sys/kbd/<left>" || e == "/sys/kbd/h" {
+			activeMenu = orderType
+			p.active.background.BorderFg = ui.ColorWhite
+			s.typeSelector.background.BorderFg = ui.ColorRed
+			//p.active.background.BorderFg = ui.ColorWhite
+			//p.active = p.deposit
+			//p.active.background.BorderFg = ui.ColorRed
+		}
+	} else if activeMenu == receive {
+		p := s.selector
+		if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
+			p.active.Prev()
+		}
+		if e == "/sys/kbd/<down>" || e == "/sys/kbd/j" {
+			p.active.Next()
+		}
+		if e == "/sys/kbd/<right>" || e == "/sys/kbd/l" {
+
+			p.active.background.BorderFg = ui.ColorWhite
+			p.active = p.receive
+			p.active.background.BorderFg = ui.ColorRed
+		}
+		if e == "/sys/kbd/<left>" || e == "/sys/kbd/h" {
+			activeMenu = deposit
+			p.active.background.BorderFg = ui.ColorWhite
+			p.active = p.deposit
+			p.active.background.BorderFg = ui.ColorRed
+		}
+	} else if activeMenu == orderType {
+		p := s.selector
+		if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
+			s.typeSelector.Prev()
+		}
+		if e == "/sys/kbd/<down>" || e == "/sys/kbd/j" {
+			s.typeSelector.Next()
+		}
+		if e == "/sys/kbd/<right>" || e == "/sys/kbd/l" {
+			activeMenu = deposit
+			s.typeSelector.background.BorderFg = ui.ColorWhite
+			p.active = p.deposit
+			p.active.background.BorderFg = ui.ColorRed
+		}
+
 	}
-	if e == "/sys/kbd/<down>" || e == "/sys/kbd/j" {
-		p.active.Next()
+	// Toggle ticker on and off. TODO: cleaner signalling mechanism
+	if s.typeSelector.Selected().Text() == "I'm Feeling Lucky" && s.luckyTicker == nil {
+		s.luckyTicker = time.NewTicker(100 * time.Millisecond) // I think this is a giant go-routine leak
+		go func() {
+			for range s.luckyTicker.C {
+				for i := 0; i < rand.Intn(20); i++ {
+					s.selector.receive.Next()
+				}
+				if !s.jankDrawToggle {
+					ui.Render(selectScreen.Buffers()...)
+				}
+			}
+		}()
 	}
-	if e == "/sys/kbd/<right>" || e == "/sys/kbd/l" {
-		p.active.background.BorderFg = ui.ColorWhite
-		p.active = p.receive
-		p.active.background.BorderFg = ui.ColorRed
-	}
-	if e == "/sys/kbd/<left>" || e == "/sys/kbd/h" {
-		p.active.background.BorderFg = ui.ColorWhite
-		p.active = p.deposit
-		p.active.background.BorderFg = ui.ColorRed
+	if s.typeSelector.Selected().Text() != "I'm Feeling Lucky" && s.luckyTicker != nil {
+		s.luckyTicker.Stop()
+		s.luckyTicker = nil
 	}
 }

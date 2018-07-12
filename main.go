@@ -202,6 +202,7 @@ func listenForEvents() {
 		switch activeState {
 		case selection:
 			_, rec := selectScreen.SelectedCoins()
+			selectScreen.jankDrawToggle = true
 			activeState = activeState.transitionExchange(loadDepositAddresses()[rec.Symbol])
 		case addressInput:
 			activeState = activeState.transitionExchange(inputScreen.input.Text)
