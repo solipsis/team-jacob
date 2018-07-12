@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand"
+	"strings"
 	"time"
 
 	ui "github.com/gizak/termui"
@@ -18,15 +19,16 @@ var DefaultSelectLayout = &SelectLayout{
 	infoY:      40,
 	infoHeight: 3,
 	infoWidth:  40,
-	wheelX:     37,
+	wheelX:     22,
 	wheelWidth: 21,
-	wheelY:     12,
+	wheelY:     15,
 }
 
 type PairSelectorScreen struct {
 	selector       *pairSelector
 	stats          *pairStats
 	typeSelector   *ringSelector
+	typePar        *ui.Par
 	divider        *ui.Par
 	info           *ui.Par
 	help           *ui.Par
@@ -52,6 +54,15 @@ type test struct {
 func (t *test) Text() string {
 	return t.str
 }
+
+// TODO: edge cases
+func centerText(p *ui.Par, t string) {
+	l := p.Width - 2 // border lines
+	Log.Println("l:", l, "width:", p.Width)
+	pad := (l - len(t)) / 2
+	p.Text = strings.Repeat(" ", pad) + t
+}
+
 func (p *PairSelectorScreen) Init() {
 	// TODO: extract out all pairInfo code
 	coins, err := activeCoins()
@@ -80,7 +91,17 @@ func (p *PairSelectorScreen) Init() {
 	arr := []ringItem{&test{"Quick"}, &test{"Precise"}, &test{"I'm Feeling Lucky"}}
 	p.typeSelector = NewRingSelector(arr, "Order Type", 6, 14, 3)
 
-	div := ui.NewPar(" ----- > ")
+	typePar := ui.NewPar("")
+	typePar.BorderLabel = "Order Type"
+	typePar.BorderFg = ui.ColorMagenta
+	typePar.Height = 3
+	typePar.Width = 13
+	centerText(typePar, "Quick")
+	typePar.Y = p.layout.wheelY - 3
+	typePar.X = p.layout.wheelX + 19
+	p.typePar = typePar
+
+	div := ui.NewPar(" < --- > ")
 	div.Border = false
 	div.Y = p.layout.wheelY + 5
 	div.X = p.layout.wheelX + p.layout.wheelWidth
@@ -90,8 +111,9 @@ func (p *PairSelectorScreen) Init() {
 
 	l := new(legend)
 	l.entries = append(l.entries, entry{key: "Q", text: "Quit"})
-	l.entries = append(l.entries, entry{key: "P", text: "Precise"})
+	l.entries = append(l.entries, entry{key: "T", text: "Toggle Order Type"})
 	l.entries = append(l.entries, entry{key: "K", text: "Keepkey Mode"})
+	l.entries = append(l.entries, entry{key: "Y", text: "I'm feeling Lucky"})
 	p.legend = l
 
 	msg := " Use <arrow keys> or <hjkl> to select 2 coins and <Enter> to initiate a Shift "
@@ -99,7 +121,7 @@ func (p *PairSelectorScreen) Init() {
 	help.X = 7
 	help.Height = 3
 	help.Width = len(msg) + 2
-	help.Y = 24
+	help.Y = 27
 	p.help = help
 }
 
@@ -152,100 +174,58 @@ func (p *PairSelectorScreen) Buffers() []ui.Bufferer {
 	bufs = append(bufs, p.divider)
 	bufs = append(bufs, p.help)
 	bufs = append(bufs, p.legend.Buffers()...)
-	bufs = append(bufs, p.typeSelector.Buffers()...)
+	bufs = append(bufs, p.typePar)
 	return bufs
 }
-
-// TODO: Remove this once I refactor coinwheels to use new list format
-// TODO; list of menus. set active colors for active ones
-// set inactive colors for others
-var activeMenu = deposit
-
-const (
-	orderType int = iota
-	deposit
-	receive
-)
 
 // Handle responds to select UI events
 func (s *PairSelectorScreen) Handle(e string) {
 	Log.Println("Select Input", e)
 
+	if e == "/sys/kbd/t" {
+		if strings.Contains(s.typePar.Text, "Quick") {
+			centerText(s.typePar, "Precise")
+		} else {
+			centerText(s.typePar, "Quick")
+		}
+	}
+
 	// TODO: completely redo this after wheel interface migration
-	if activeMenu == deposit {
-		p := s.selector
-		if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
-			p.active.Prev()
-		}
-		if e == "/sys/kbd/<down>" || e == "/sys/kbd/j" {
-			p.active.Next()
-		}
-		if e == "/sys/kbd/<right>" || e == "/sys/kbd/l" {
-			activeMenu = receive
-			p.active.background.BorderFg = ui.ColorWhite
-			p.active = p.receive
-			p.active.background.BorderFg = ui.ColorRed
-		}
-		if e == "/sys/kbd/<left>" || e == "/sys/kbd/h" {
-			activeMenu = orderType
-			p.active.background.BorderFg = ui.ColorWhite
-			s.typeSelector.background.BorderFg = ui.ColorRed
-			//p.active.background.BorderFg = ui.ColorWhite
-			//p.active = p.deposit
-			//p.active.background.BorderFg = ui.ColorRed
-		}
-	} else if activeMenu == receive {
-		p := s.selector
-		if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
-			p.active.Prev()
-		}
-		if e == "/sys/kbd/<down>" || e == "/sys/kbd/j" {
-			p.active.Next()
-		}
-		if e == "/sys/kbd/<right>" || e == "/sys/kbd/l" {
-
-			p.active.background.BorderFg = ui.ColorWhite
-			p.active = p.receive
-			p.active.background.BorderFg = ui.ColorRed
-		}
-		if e == "/sys/kbd/<left>" || e == "/sys/kbd/h" {
-			activeMenu = deposit
-			p.active.background.BorderFg = ui.ColorWhite
-			p.active = p.deposit
-			p.active.background.BorderFg = ui.ColorRed
-		}
-	} else if activeMenu == orderType {
-		p := s.selector
-		if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
-			s.typeSelector.Prev()
-		}
-		if e == "/sys/kbd/<down>" || e == "/sys/kbd/j" {
-			s.typeSelector.Next()
-		}
-		if e == "/sys/kbd/<right>" || e == "/sys/kbd/l" {
-			activeMenu = deposit
-			s.typeSelector.background.BorderFg = ui.ColorWhite
-			p.active = p.deposit
-			p.active.background.BorderFg = ui.ColorRed
-		}
-
+	p := s.selector
+	if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
+		p.active.Prev()
 	}
-	// Toggle ticker on and off. TODO: cleaner signalling mechanism
-	if s.typeSelector.Selected().Text() == "I'm Feeling Lucky" && s.luckyTicker == nil {
-		s.luckyTicker = time.NewTicker(100 * time.Millisecond) // I think this is a giant go-routine leak
-		go func() {
-			for range s.luckyTicker.C {
-				for i := 0; i < rand.Intn(20); i++ {
-					s.selector.receive.Next()
-				}
-				if !s.jankDrawToggle {
-					ui.Render(selectScreen.Buffers()...)
-				}
-			}
-		}()
+	if e == "/sys/kbd/<down>" || e == "/sys/kbd/j" {
+		p.active.Next()
 	}
-	if s.typeSelector.Selected().Text() != "I'm Feeling Lucky" && s.luckyTicker != nil {
-		s.luckyTicker.Stop()
-		s.luckyTicker = nil
+	if e == "/sys/kbd/<right>" || e == "/sys/kbd/l" {
+		p.active.background.BorderFg = ui.ColorWhite
+		p.active = p.receive
+		p.active.background.BorderFg = ui.ColorRed
+	}
+
+	if e == "/sys/kbd/<left>" || e == "/sys/kbd/h" {
+		p.active.background.BorderFg = ui.ColorWhite
+		p.active = p.deposit
+		p.active.background.BorderFg = ui.ColorRed
+	}
+
+	if e == "/sys/kbd/y" {
+		if s.luckyTicker == nil {
+			s.luckyTicker = time.NewTicker(100 * time.Millisecond)
+			go func() {
+				for range s.luckyTicker.C {
+					for i := 0; i < rand.Intn(20); i++ {
+						s.selector.receive.Next()
+					}
+					if !s.jankDrawToggle {
+						ui.Render(selectScreen.Buffers()...)
+					}
+				}
+			}()
+		} else {
+			s.luckyTicker.Stop()
+			s.luckyTicker = nil
+		}
 	}
 }

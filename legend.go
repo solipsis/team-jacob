@@ -22,7 +22,7 @@ func (l *legend) Buffers() []ui.Bufferer {
 		txt += fmt.Sprintf("[%s] %s | ", e.key, e.text)
 	}
 	txt = txt[:len(txt)-2]
-	txt = strings.Repeat("-", 80) + "\n" + txt
+	txt = strings.Repeat("-", 90) + "\n" + txt
 	p := ui.NewPar(txt)
 	p.SetX(1)
 	p.SetY(30)
