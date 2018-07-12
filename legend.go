@@ -28,7 +28,6 @@ func (l *legend) Buffers() []ui.Bufferer {
 	p.SetY(30)
 	p.Width = len(txt)
 	p.Height = 3
-	Log.Println("TEXT", txt)
 	p.Border = false
 	p.TextFgColor = ui.ColorYellow
 

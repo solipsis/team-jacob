@@ -83,6 +83,20 @@ var DefaultExchangeConfig = &ExchangeConfig{
 	RetColor:  ui.ColorYellow,
 }
 
+type statsConfig struct {
+	x, y                                    int
+	minWidth, maxWidth, rateWidth, feeWidth int
+}
+
+var defaultStatsConfig = statsConfig{
+	x:         1,
+	y:         8,
+	minWidth:  25,
+	maxWidth:  25,
+	rateWidth: 25,
+	feeWidth:  25,
+}
+
 type LoadingConfig struct {
 	X, Y          int
 	Width, Height int

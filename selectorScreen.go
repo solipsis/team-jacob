@@ -27,7 +27,6 @@ var DefaultSelectLayout = &SelectLayout{
 type PairSelectorScreen struct {
 	selector       *pairSelector
 	stats          *pairStats
-	typeSelector   *ringSelector
 	typePar        *ui.Par
 	divider        *ui.Par
 	info           *ui.Par
@@ -85,11 +84,8 @@ func (p *PairSelectorScreen) Init() {
 
 	p.selector = pair
 	p.marketInfo = m
-	d, r := pair.deposit.ring.Value().Symbol, pair.receive.ring.Value().Symbol
-	p.stats = NewPairStats(m[d+"_"+r])
-
-	arr := []ringItem{&test{"Quick"}, &test{"Precise"}, &test{"I'm Feeling Lucky"}}
-	p.typeSelector = NewRingSelector(arr, "Order Type", 6, 14, 3)
+	//d, r := pair.deposit.ring.Value().Symbol, pair.receive.ring.Value().Symbol
+	p.stats = newPairStats()
 
 	typePar := ui.NewPar("")
 	typePar.BorderLabel = "Order Type"
@@ -169,7 +165,8 @@ func (p *PairSelectorScreen) Buffers() []ui.Bufferer {
 	bufs := p.selector.Buffers()
 	// TODO: refactor this
 	d, r := p.SelectedCoins()
-	p.stats.Update(d.Symbol, r.Symbol, p.marketInfo[d.Symbol+"_"+r.Symbol])
+	info := p.marketInfo[d.Symbol+"_"+r.Symbol]
+	p.stats.update(d.Symbol, r.Symbol, info.Min, info.Limit, info.Rate, info.MinerFee)
 	bufs = append(bufs, p.stats.Buffers()...)
 	bufs = append(bufs, p.divider)
 	bufs = append(bufs, p.help)
@@ -190,7 +187,6 @@ func (s *PairSelectorScreen) Handle(e string) {
 		}
 	}
 
-	// TODO: completely redo this after wheel interface migration
 	p := s.selector
 	if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
 		p.active.Prev()

@@ -2,90 +2,62 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	ui "github.com/gizak/termui"
-	ss "github.com/solipsis/shapeshift"
 )
 
+// UI element that displays the min/max/rate/fee between
+// a pair of shapeshift coins
 type pairStats struct {
 	dep, rec            string
 	min, max, rate, fee *ui.Par
-	info                ss.MarketInfoResponse
 }
 
-type statConfig struct {
-	x, y                                    int
-	minWidth, maxWidth, rateWidth, feeWidth int
-}
+// contruct new pairStats ui element. Use update() for adjusting the displayed data
+func newPairStats() *pairStats {
+	stats := pairStats{}
+	c := defaultStatsConfig
 
-var defaultConfig = statConfig{
-	x:         1,
-	y:         8,
-	minWidth:  25,
-	maxWidth:  25,
-	rateWidth: 25,
-	feeWidth:  25,
-}
-
-// TODO: marketInfoResponse to interface???
-// info pane should probably be freed of ss dependencies.
-func NewPairStats(info ss.MarketInfoResponse) *pairStats {
-	//stats := pairStats{dep: dep, rec: rec, info: info}
-	dep, rec := strings.Split(info.Pair, "_")[0], strings.Split(info.Pair, "_")[0]
-	stats := pairStats{dep: dep, rec: rec, info: info}
-	c := defaultConfig
-	// TODO: rework layout setup
-	stats.min = uiPar("B", "Deposit Min", c.x, c.y, c.minWidth, 3)
-	stats.min.BorderFg = ui.ColorBlue
-	stats.max = uiPar("A", "Deposit Max", c.x+c.minWidth, c.y, c.maxWidth, 3)
-	stats.max.BorderFg = ui.ColorMagenta
-	stats.rate = uiPar("C", "Rate", c.x+c.minWidth+c.maxWidth, c.y, c.rateWidth, 3)
-	stats.rate.BorderFg = ui.ColorYellow
-	stats.fee = uiPar("D", "Miner Fee", c.x+c.minWidth+c.maxWidth+c.rateWidth, c.y, c.feeWidth, 3)
-	stats.fee.BorderFg = ui.ColorRed
-	//stats.marketInfo = m
+	stats.min = pairInfoBox("Deposit Min", c.x, c.y, c.minWidth, ui.ColorBlue)
+	stats.max = pairInfoBox("Deposit Max", c.x+c.minWidth, c.y, c.maxWidth, ui.ColorMagenta)
+	stats.rate = pairInfoBox("Rate", c.x+c.minWidth+c.maxWidth, c.y, c.rateWidth, ui.ColorYellow)
+	stats.fee = pairInfoBox("Miner Fee", c.x+c.minWidth+c.maxWidth+c.rateWidth, c.y, c.feeWidth, ui.ColorRed)
 
 	return &stats
 }
 
-// TODO: clean up buffers and constructor
-func (p *pairStats) Update(dep, rec string, info ss.MarketInfoResponse) {
-	p.dep = dep
-	p.rec = rec
-	p.info = info
-
-}
-
 func (p *pairStats) Buffers() []ui.Bufferer {
-	//info := p.marketInfo[p.dep.Symbol+"_"+p.rec.Symbol]
-	if p.dep == "" || p.rec == "" || p.info.Rate == 0 {
-		p.max.Text = "Pair Unavailable"
-		p.min.Text = "Pair Unavailable"
-		p.rate.Text = "Pair Unavailable"
-		p.fee.Text = "Pair Unavailable"
-		return []ui.Bufferer{p.min, p.max, p.rate, p.fee}
-	}
-	if p.rec == "XRP" || p.dep == "XRP" {
-		p.max.Text = "        LOL "
-		p.min.Text = " NOPE NOPE NOPE!!!"
-		p.rate.Text = "        NOT"
-		p.fee.Text = "       Happening"
-	} else {
-		p.max.Text = fmt.Sprintf("%f %s", p.info.Limit, p.dep)
-		p.min.Text = fmt.Sprintf("%f %s", p.info.Min, p.dep)
-		p.rate.Text = fmt.Sprintf("1 %s = %f %s", p.dep, p.info.Rate, p.rec)
-		p.fee.Text = fmt.Sprintf("%f %s", p.info.MinerFee, p.rec)
-	}
 	return []ui.Bufferer{p.min, p.max, p.rate, p.fee}
 }
 
-func uiPar(text, bLabel string, x, y, width, height int) *ui.Par {
-	par := ui.NewPar(text)
+// construct one of the box subelements of the pairStats element
+func pairInfoBox(bLabel string, x, y, width int, borderColor ui.Attribute) *ui.Par {
+	par := ui.NewPar("")
 	par.BorderLabel = bLabel
 	par.X = x
 	par.Y = y
 	par.Width = width
-	par.Height = height
+	par.Height = 3 // 1 + 2 rows of border characters
+	par.BorderFg = borderColor
 	return par
+}
+
+// adjust the text shown in the pairStats boxes to updated values
+func (p *pairStats) update(dep, rec string, depMin, depMax, rate, fee float64) {
+	if dep == "" || rec == "" || rate == 0 {
+		p.max.Text = "Pair Unavailable"
+		p.min.Text = "Pair Unavailable"
+		p.rate.Text = "Pair Unavailable"
+		p.fee.Text = "Pair Unavailable"
+	} else if rec == "XRP" {
+		p.max.Text = "        LOL "
+		p.min.Text = "        NOPE"
+		p.rate.Text = "       Wrong"
+		p.fee.Text = "        Answer"
+	} else {
+		p.max.Text = fmt.Sprintf("%f %s", depMax, dep)
+		p.min.Text = fmt.Sprintf("%f %s", depMin, dep)
+		p.rate.Text = fmt.Sprintf("1 %s = %f %s", dep, rate, rec)
+		p.fee.Text = fmt.Sprintf("%f %s", fee, rec)
+	}
 }
