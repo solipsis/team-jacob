@@ -1,14 +1,17 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"log"
 	"math/big"
 	"os"
+	"strconv"
 	"time"
 
 	ui "github.com/gizak/termui"
 	kk "github.com/solipsis/go-keepkey/pkg/keepkey"
+	ss "github.com/solipsis/shapeshift"
 )
 
 // ui state
@@ -19,6 +22,7 @@ const (
 	encounteredError
 	selection
 	addressInput
+	amountInput
 	exchange
 )
 
@@ -37,6 +41,7 @@ var (
 
 var kkMode = flag.Bool("kk", false, "keepkey mode")
 var kkDevice *kk.Keepkey
+var shift *ss.New
 
 func main() {
 
@@ -58,6 +63,7 @@ func main() {
 	defer ui.Close()
 
 	// Begin by loading the selection screen
+	shift = new(ss.New)
 	header = newHeader(DefaultHeaderConfig)
 	activeState = activeState.transitionLoading("Loading...")
 	draw(0)
@@ -85,7 +91,7 @@ func draw(t int) {
 	case selection:
 		ui.Render(selectScreen.Buffers()...)
 
-	case addressInput:
+	case addressInput, amountInput:
 		ui.Render(inputScreen.Buffers()...)
 
 	case exchange:
@@ -146,24 +152,40 @@ func (s *state) transitionSelect() state {
 	return selection
 }
 
-func (s *state) transitionInput(prompt string) state {
+func (s *state) transitionAddressInput(prompt string) state {
 	inputScreen = NewInputScreen(prompt)
 	inputScreen.stats = selectScreen.stats // TODO: cleaner data transfer
 	ui.Clear()
 	return addressInput
 }
 
-//func (s *state) transitionExchange(recAddr, amount string, precise bool) state {
-func (s *state) transitionExchange(recAddr string) state {
-	Log.Println("Transition Exchange. recAddr: ", recAddr)
+func (s *state) transitionAmountInput(prompt string) state {
+	inputScreen = NewInputScreen(prompt)
+	inputScreen.stats = selectScreen.stats // TODO: cleaner data transfer
+	ui.Clear()
+	return amountInput
+}
+
+func (s *state) transitionExchange() state {
+	Log.Println("Transition Exchange:", *shift)
+
+	// TODO: Refator the hunterlong ss library
+	if shift == nil {
+		shift = new(ss.New)
+	}
 
 	// if destination Address set go to exchange
 	// if not prompt the user for an address
-	if recAddr == "" {
-		return s.transitionInput("Please enter an address")
+	if shift.ToAddress == "" {
+		return s.transitionAddressInput("Please enter an address")
 	}
 
-	shift, err := newShift(selectScreen.activePair(), recAddr)
+	// If its a quick order make sure the user has specified a deposit amount
+	if shift.Amount <= 0 && selectScreen.isPreciseOrder() {
+		return s.transitionAmountInput("Please enter a deposit amount")
+	}
+
+	nshift, err := newShift(shift, selectScreen.activePair())
 	if err != nil {
 		return s.transitionError(err)
 	}
@@ -175,13 +197,11 @@ func (s *state) transitionExchange(recAddr string) state {
 		for range ticker.C {
 			if activeState == exchange {
 				ui.Render(exchangeScreen.Buffers()...)
-				//time.Sleep(100 * time.Millisecond)
-				//exchangeScreen.DrawQR()
 			}
 		}
 	}()
 
-	exchangeScreen = NewExchangeScreen(shift)
+	exchangeScreen = NewExchangeScreen(nshift)
 	ui.Clear()
 	return exchange
 }
@@ -200,13 +220,24 @@ func listenForEvents() {
 		ui.StopLoop()
 	})
 	ui.Handle("/sys/kbd/<enter>", func(e ui.Event) {
+		// TODO: move this logic into their respective screens
 		switch activeState {
 		case selection:
 			_, rec := selectScreen.SelectedCoins()
 			selectScreen.jankDrawToggle = true
-			activeState = activeState.transitionExchange(loadDepositAddresses()[rec.Symbol])
+
+			shift.ToAddress = loadDepositAddresses()[rec.Symbol]
+			activeState = activeState.transitionExchange()
 		case addressInput:
-			activeState = activeState.transitionExchange(inputScreen.input.Text)
+			shift.ToAddress = inputScreen.Text()
+			activeState = activeState.transitionExchange()
+		case amountInput:
+			amt, err := strconv.Atoi(inputScreen.Text())
+			if err != nil {
+				activeState = activeState.transitionError(errors.New("Invalid send amount"))
+			}
+			shift.Amount = float64(amt)
+			activeState = activeState.transitionExchange()
 		case encounteredError:
 			ui.StopLoop()
 		}
@@ -216,7 +247,7 @@ func listenForEvents() {
 		switch activeState {
 		case selection:
 			selectScreen.Handle(e.Path)
-		case addressInput:
+		case addressInput, amountInput:
 			inputScreen.Handle(e.Path)
 		}
 		draw(0)

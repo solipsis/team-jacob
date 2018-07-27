@@ -51,6 +51,10 @@ func (i *InputScreen) Handle(e string) {
 	i.input.Text += arr[3]
 }
 
+func (i *InputScreen) Text() string {
+	return i.input.Text
+}
+
 type LoadingScreen struct {
 	load *ui.Par
 }

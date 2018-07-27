@@ -46,14 +46,6 @@ func NewPairSelectorScreen(l *SelectLayout) *PairSelectorScreen {
 	return &PairSelectorScreen{layout: l}
 }
 
-type test struct {
-	str string
-}
-
-func (t *test) Text() string {
-	return t.str
-}
-
 // TODO: edge cases
 func centerText(p *ui.Par, t string) {
 	l := p.Width - 2 // border lines
@@ -74,17 +66,15 @@ func (p *PairSelectorScreen) Init() {
 		Log.Println("Unable to get market info:", err)
 	}
 
-	m := make(map[string]ss.MarketInfoResponse)
+	p.marketInfo = make(map[string]ss.MarketInfoResponse)
 	for _, v := range rates {
-		m[v.Pair] = v
+		p.marketInfo[v.Pair] = v
 	}
 	n := toCoinRing(coins)
+
 	pair := addPairSelector(n)
 	formatSelector(pair, p.layout)
-
 	p.selector = pair
-	p.marketInfo = m
-	//d, r := pair.deposit.ring.Value().Symbol, pair.receive.ring.Value().Symbol
 	p.stats = newPairStats()
 
 	typePar := ui.NewPar("")
@@ -108,7 +98,7 @@ func (p *PairSelectorScreen) Init() {
 	l := new(legend)
 	l.entries = append(l.entries, entry{key: "Q", text: "Quit"})
 	l.entries = append(l.entries, entry{key: "T", text: "Toggle Order Type"})
-	l.entries = append(l.entries, entry{key: "K", text: "Keepkey Mode"})
+	l.entries = append(l.entries, entry{key: "W", text: "Keepkey Mode (Disabled)"})
 	l.entries = append(l.entries, entry{key: "Y", text: "I'm feeling Lucky"})
 	p.legend = l
 
@@ -123,6 +113,10 @@ func (p *PairSelectorScreen) Init() {
 
 func (p *PairSelectorScreen) activePair() string {
 	return p.selector.receive.SelectedCoin().Symbol + "_" + p.selector.deposit.SelectedCoin().Symbol
+}
+
+func (p *PairSelectorScreen) isPreciseOrder() bool {
+	return strings.Contains(p.typePar.Text, "Precise")
 }
 
 func addPairSelector(r coinRing) *pairSelector {
@@ -179,6 +173,7 @@ func (p *PairSelectorScreen) Buffers() []ui.Bufferer {
 func (s *PairSelectorScreen) Handle(e string) {
 	Log.Println("Select Input", e)
 
+	// Toggling orderType between quick and precise
 	if e == "/sys/kbd/t" {
 		if strings.Contains(s.typePar.Text, "Quick") {
 			centerText(s.typePar, "Precise")
@@ -187,6 +182,7 @@ func (s *PairSelectorScreen) Handle(e string) {
 		}
 	}
 
+	// Deposit and recieve coin selection
 	p := s.selector
 	if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
 		p.active.Prev()
@@ -199,13 +195,13 @@ func (s *PairSelectorScreen) Handle(e string) {
 		p.active = p.receive
 		p.active.background.BorderFg = ui.ColorRed
 	}
-
 	if e == "/sys/kbd/<left>" || e == "/sys/kbd/h" {
 		p.active.background.BorderFg = ui.ColorWhite
 		p.active = p.deposit
 		p.active.background.BorderFg = ui.ColorRed
 	}
 
+	// I'm feeling lucky toggle
 	if e == "/sys/kbd/y" {
 		if s.luckyTicker == nil {
 			s.luckyTicker = time.NewTicker(100 * time.Millisecond)

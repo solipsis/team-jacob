@@ -34,7 +34,7 @@ type qr struct {
 	buf *bytes.Buffer
 }
 
-func NewExchangeScreen(resp *shift) *ExchangeScreen {
+func NewExchangeScreen(resp *FixMeshift) *ExchangeScreen {
 
 	cfg := DefaultExchangeConfig
 

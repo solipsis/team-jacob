@@ -14,7 +14,7 @@ type Coin struct {
 	Available bool
 }
 
-type shift struct {
+type FixMeshift struct {
 	*ss.NewTransactionResponse
 	receiveAddr string
 }
@@ -29,16 +29,13 @@ func toCoin(sc ss.Coin) *Coin {
 }
 
 // initiate a new shift with Shapeshift
-func newShift(pair, recAddr string) (*shift, error) {
+func newShift(shift *ss.New, pair string) (*FixMeshift, error) {
 
-	s := ss.New{
-		//TODO; check other similar method on select screen
-		Pair:      pair,
-		ToAddress: recAddr,
-	}
 	Log.Println("Pair: ", selectScreen.activePair())
 
-	response, err := s.Shift()
+	shift.Pair = pair
+
+	response, err := shift.Shift()
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +44,7 @@ func newShift(pair, recAddr string) (*shift, error) {
 	if response.ErrorMsg() != "" {
 		return nil, errors.New(response.ErrorMsg())
 	}
-	return &shift{response, recAddr}, nil
+	return &FixMeshift{response, shift.ToAddress}, nil
 }
 
 // activeCoins returns a slice of all the currently active coins on shapeshift
