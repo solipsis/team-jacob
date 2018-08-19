@@ -86,6 +86,7 @@ func NewErrorScreen(text string) *ErrorScreen {
 	err.Height = DefaultLoadingConfig.Height
 	err.TextFgColor = ui.ColorYellow
 	err.BorderFg = ui.ColorRed
+	err.BorderLabel = "Error"
 	return &ErrorScreen{err: err}
 }
 

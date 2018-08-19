@@ -24,6 +24,7 @@ const (
 	addressInput
 	amountInput
 	exchange
+	setup
 )
 
 var activeState = loading
@@ -36,6 +37,7 @@ var (
 	selectScreen   *PairSelectorScreen
 	exchangeScreen *ExchangeScreen
 	inputScreen    *InputScreen
+	setupScreen    *SetupScreen
 	header         *Header
 )
 
@@ -93,6 +95,9 @@ func draw(t int) {
 
 	case addressInput, amountInput:
 		ui.Render(inputScreen.Buffers()...)
+
+	case setup:
+		ui.Render(setupScreen.Buffers()...)
 
 	case exchange:
 		// Delays are to ensure QR buffer gets flushed as it
@@ -164,6 +169,12 @@ func (s *state) transitionAmountInput(prompt string) state {
 	inputScreen.stats = selectScreen.stats // TODO: cleaner data transfer
 	ui.Clear()
 	return amountInput
+}
+
+func (s *state) transitionSetup(precise bool) state {
+	setupScreen = newSetupScreen(precise)
+	ui.Clear()
+	return setup
 }
 
 func (s *state) transitionExchange() state {
@@ -240,6 +251,8 @@ func listenForEvents() {
 			activeState = activeState.transitionExchange()
 		case encounteredError:
 			ui.StopLoop()
+		case setup:
+			setupScreen.Handle(e.Path)
 		}
 		draw(0)
 	})
@@ -249,6 +262,8 @@ func listenForEvents() {
 			selectScreen.Handle(e.Path)
 		case addressInput, amountInput:
 			inputScreen.Handle(e.Path)
+		case setup:
+			setupScreen.Handle(e.Path)
 		}
 		draw(0)
 	})
