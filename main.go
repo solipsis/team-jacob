@@ -180,23 +180,33 @@ func (s *state) transitionSetup(precise bool) state {
 func (s *state) transitionExchange() state {
 	Log.Println("Transition Exchange:", *shift)
 
-	// TODO: Refator the hunterlong ss library
-	if shift == nil {
-		shift = new(ss.New)
+	amount, err := setupScreen.amount()
+	if err != nil {
+		return s.transitionError(errors.New("Invalid order amount"))
 	}
 
-	// if destination Address set go to exchange
-	// if not prompt the user for an address
-	if shift.ToAddress == "" {
-		return s.transitionAddressInput("Please enter an address")
+	shift = &ss.New{
+		ToAddress:   setupScreen.receiveAddress(),
+		FromAddress: setupScreen.returnAddress(),
+		Amount:      amount,
+		Pair:        selectScreen.activePair(),
 	}
 
-	// If its a quick order make sure the user has specified a deposit amount
-	if shift.Amount <= 0 && selectScreen.isPreciseOrder() {
-		return s.transitionAmountInput("Please enter a deposit amount")
-	}
+	/*
+		//return s.transitionSetup(selectScreen.isPreciseOrder())
+		// if destination Address set go to exchange
+		// if not prompt the user for an address
+		if shift.ToAddress == "" {
+			return s.transitionAddressInput("Please enter an address")
+		}
 
-	nshift, err := newShift(shift, selectScreen.activePair())
+		// If its a quick order make sure the user has specified a deposit amount
+		if shift.Amount <= 0 && selectScreen.isPreciseOrder() {
+			return s.transitionAmountInput("Please enter a deposit amount")
+		}
+	*/
+
+	nshift, err := newShift(shift)
 	if err != nil {
 		return s.transitionError(err)
 	}
@@ -238,7 +248,7 @@ func listenForEvents() {
 			selectScreen.jankDrawToggle = true
 
 			shift.ToAddress = loadDepositAddresses()[rec.Symbol]
-			activeState = activeState.transitionExchange()
+			activeState = activeState.transitionSetup(selectScreen.isPreciseOrder())
 		case addressInput:
 			shift.ToAddress = inputScreen.Text()
 			activeState = activeState.transitionExchange()
@@ -252,7 +262,7 @@ func listenForEvents() {
 		case encounteredError:
 			ui.StopLoop()
 		case setup:
-			setupScreen.Handle(e.Path)
+			activeState = activeState.transitionExchange()
 		}
 		draw(0)
 	})

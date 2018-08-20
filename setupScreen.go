@@ -1,17 +1,19 @@
 package main
 
 import (
+	"strconv"
 	"strings"
 
 	ui "github.com/gizak/termui"
 )
 
 type SetupScreen struct {
-	//amtEntry  *ui.Par
-	//addrEntry *ui.Par
-	//retEntry  *ui.Par
-	help   *ui.Par
-	legend *legend
+	amtEntry  *ui.Par
+	addrEntry *ui.Par
+	retEntry  *ui.Par
+	help      *ui.Par
+	legend    *legend
+	stats     *pairStats
 
 	editing  bool
 	selected int
@@ -23,7 +25,7 @@ type field struct {
 	active bool
 }
 
-func newSetupScreen(precise bool) *SetupScreen {
+func newSetupScreen(precise bool, stats *pairStats) *SetupScreen {
 
 	l := new(legend)
 	l.entries = append(l.entries, entry{key: "Q", text: "Quit"})
@@ -34,54 +36,65 @@ func newSetupScreen(precise bool) *SetupScreen {
 
 	amtEntry := ui.NewPar("")
 	amtEntry.BorderLabel = "Amount"
-	amtEntry.SetX(10)
-	amtEntry.SetY(10)
-	amtEntry.Width = 40
+	amtEntry.SetX(20)
+	amtEntry.SetY(12)
+	amtEntry.Width = 60
 	amtEntry.Height = 3
 	amtEntry.BorderFg = ui.ColorYellow
 
 	addrEntry := ui.NewPar("")
 	addrEntry.BorderLabel = "Receive Address"
-	addrEntry.SetX(10)
-	addrEntry.SetY(15)
-	addrEntry.Width = 40
+	addrEntry.SetX(20)
+	addrEntry.SetY(17)
+	addrEntry.Width = 60
 	addrEntry.Height = 3
 
 	retEntry := ui.NewPar("")
 	retEntry.BorderLabel = "Return Address (optional)"
-	retEntry.SetX(10)
-	retEntry.SetY(20)
-	retEntry.Width = 40
+	retEntry.SetX(20)
+	retEntry.SetY(22)
+	retEntry.Width = 60
 	retEntry.Height = 3
 
 	fields := []*ui.Par{amtEntry, addrEntry, retEntry}
 
-	help := ui.NewPar("Use the <arrow keys> to select a field and <space> to edit/confirm. Press <enter> to confirm your order")
-	help.SetX(5)
-	help.SetY(25)
-	help.Height = 3
-	help.Width = 80
+	help := ui.NewPar(" Use the <arrow keys> to select a field and <space> to edit/confirm.  Press <enter> to confirm your order")
+	help.SetX(15)
+	help.SetY(26)
+	help.Height = 4
+	help.Width = 71
 
 	return &SetupScreen{
-		//amtEntry:  amtEntry,
-		//addrEntry: addrEntry,
-		//retEntry:  retEntry,
-		fields: fields,
-		help:   help,
-		legend: l,
+		amtEntry:  amtEntry,
+		addrEntry: addrEntry,
+		retEntry:  retEntry,
+		stats:     stats,
+		fields:    fields,
+		help:      help,
+		legend:    l,
 	}
 }
 
+func (s *SetupScreen) receiveAddress() string {
+	return s.addrEntry.Text
+}
+
+func (s *SetupScreen) returnAddress() string {
+	return s.retEntry.Text
+}
+
+func (s *SetupScreen) amount() (float64, error) {
+	return strconv.ParseFloat(s.amtEntry.Text, 64)
+}
+
 func (s *SetupScreen) Buffers() []ui.Bufferer {
-	//bufs := append([]ui.Bufferer{}, s.amtEntry)
-	//bufs = append(bufs, s.addrEntry)
-	//bufs = append(bufs, s.retEntry)
 	bufs := []ui.Bufferer{}
 	bufs = append(bufs, s.help)
 	for _, f := range s.fields {
 		bufs = append(bufs, f)
 	}
 	bufs = append(bufs, s.legend.Buffers()...)
+	bufs = append(bufs, s.stats.Buffers()...)
 	return bufs
 }
 
@@ -150,9 +163,10 @@ func (s *SetupScreen) Handle(e string) {
 	//	transitio	n
 
 	// All the keys that could be used to "undo"
+	current := s.fields[s.selected]
 	if strings.HasSuffix(e, "<backspace>") || strings.HasSuffix(e, "<delete>") || strings.HasSuffix(e, "C-8") {
-		if len(s.fields[0].Text) > 0 {
-			s.fields[0].Text = s.fields[0].Text[:len(s.fields[0].Text)-1]
+		if len(current.Text) > 0 {
+			current.Text = current.Text[:len(current.Text)-1]
 		}
 		return
 	}
@@ -164,7 +178,7 @@ func (s *SetupScreen) Handle(e string) {
 		}
 
 		// append the character to the text
-		s.fields[0].Text += arr[3]
+		current.Text += arr[3]
 	}
 
 }

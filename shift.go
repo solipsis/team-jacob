@@ -29,11 +29,9 @@ func toCoin(sc ss.Coin) *Coin {
 }
 
 // initiate a new shift with Shapeshift
-func newShift(shift *ss.New, pair string) (*FixMeshift, error) {
+func newShift(shift *ss.New) (*FixMeshift, error) {
 
-	Log.Println("Pair: ", selectScreen.activePair())
-
-	shift.Pair = pair
+	Log.Println("sent to SS: ", shift)
 
 	response, err := shift.Shift()
 	if err != nil {
