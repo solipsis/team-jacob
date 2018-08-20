@@ -19,7 +19,7 @@ var DefaultSelectLayout = &SelectLayout{
 	infoY:      40,
 	infoHeight: 3,
 	infoWidth:  40,
-	wheelX:     22,
+	wheelX:     25,
 	wheelWidth: 21,
 	wheelY:     15,
 }
@@ -104,7 +104,7 @@ func (p *PairSelectorScreen) Init() {
 
 	msg := " Use <arrow keys> or <hjkl> to select 2 coins and <Enter> to initiate a Shift "
 	help := ui.NewPar(msg)
-	help.X = 7
+	help.X = 10
 	help.Height = 3
 	help.Width = len(msg) + 2
 	help.Y = 27

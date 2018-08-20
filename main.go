@@ -172,7 +172,7 @@ func (s *state) transitionAmountInput(prompt string) state {
 }
 
 func (s *state) transitionSetup(precise bool) state {
-	setupScreen = newSetupScreen(precise)
+	setupScreen = newSetupScreen(precise, selectScreen.stats)
 	ui.Clear()
 	return setup
 }

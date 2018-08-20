@@ -45,12 +45,12 @@ type HeaderConfig struct {
 }
 
 var DefaultHeaderConfig = &HeaderConfig{
-	FoxX:            70,
+	FoxX:            75,
 	FoxY:            0,
 	FoxHeight:       8,
 	FoxWidth:        29,
 	FoxTextFgColor:  ui.ColorCyan,
-	LogoX:           5,
+	LogoX:           10,
 	LogoY:           1,
 	LogoWidth:       70,
 	LogoHeight:      7,

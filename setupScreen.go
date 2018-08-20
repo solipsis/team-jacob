@@ -107,14 +107,14 @@ func (s *SetupScreen) activate() {
 	s.editing = true
 	current := s.fields[s.selected]
 	current.BorderFg = ui.ColorRed
-	current.BorderBg = ui.ColorYellow
+	current.BorderBg = ui.ColorBlack
 }
 
 func (s *SetupScreen) deactivate() {
 	s.editing = false
 	current := s.fields[s.selected]
 	current.BorderFg = ui.ColorYellow
-	current.BorderBg = ui.ColorBlack
+	current.BorderBg = ui.ColorDefault
 }
 
 func (s *SetupScreen) Handle(e string) {
