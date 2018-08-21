@@ -25,6 +25,7 @@ const (
 
 var activeState = loading
 var Log *log.Logger
+var ssAPIKey = "14e1754a594e6f6d234f0867c3884040e0e5d74776ba1e82b4c019147fb625d8343681f12a5c59d804a7fd27140eff83d521091d69c2173ed5916a2b270a1fd1"
 
 // ui elements
 var (
@@ -146,6 +147,7 @@ func (s *state) transitionExchange() state {
 		FromAddress: setupScreen.returnAddress(),
 		Amount:      amount,
 		Pair:        selectScreen.activePair(),
+		ApiKey:      ssAPIKey,
 	}
 	nshift, err := newShift(shift)
 	if err != nil {
