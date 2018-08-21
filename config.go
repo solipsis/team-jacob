@@ -110,6 +110,40 @@ var DefaultLoadingConfig = &LoadingConfig{
 	Height: 3,
 }
 
+type setupConfig struct {
+	entryX                int
+	entryWidth            int
+	entryHeight           int
+	amtY, addrY, retY     int
+	helpX, helpY          int
+	helpHeight, helpWidth int
+}
+
+var setupQuickConfig = &setupConfig{
+	entryX:      20,
+	entryWidth:  60,
+	entryHeight: 3,
+	addrY:       13,
+	retY:        20,
+	helpX:       15,
+	helpY:       26,
+	helpHeight:  4,
+	helpWidth:   71,
+}
+
+var setupPreciseConfig = &setupConfig{
+	entryX:      20,
+	entryWidth:  60,
+	entryHeight: 3,
+	amtY:        12,
+	addrY:       17,
+	retY:        22,
+	helpX:       15,
+	helpY:       26,
+	helpHeight:  4,
+	helpWidth:   71,
+}
+
 const FOX = `            ,^
            ;  ;
 \'.,'/      ; ;

@@ -32,7 +32,6 @@ func toCoin(sc ss.Coin) *Coin {
 func newShift(shift *ss.New) (*FixMeshift, error) {
 
 	Log.Println("sent to SS: ", shift)
-
 	response, err := shift.Shift()
 	if err != nil {
 		return nil, err
