@@ -37,12 +37,15 @@ func NewExchangeScreen(resp *FixMeshift, precise bool) *ExchangeScreen {
 
 	cfg := DefaultExchangeConfig
 
+	qr := newQR(resp.SendTo)
+	qrWidth := qr.width()
+
 	dep := ui.NewPar(resp.SendTo)
 	dep.BorderLabel = "Deposit Address"
 	dep.Height = cfg.DepHeight
 	dep.Width = cfg.DepWidth
 	dep.BorderFg = cfg.DepColor
-	dep.X = cfg.DepX
+	dep.X = qrWidth + 4
 	dep.Y = cfg.DepY
 
 	rec := ui.NewPar(resp.receiveAddr)
@@ -50,7 +53,7 @@ func NewExchangeScreen(resp *FixMeshift, precise bool) *ExchangeScreen {
 	rec.Height = cfg.RecHeight
 	rec.Width = cfg.RecWidth
 	rec.BorderFg = cfg.RecColor
-	rec.X = cfg.RecX
+	rec.X = qrWidth + 4
 	rec.Y = cfg.RecY
 
 	ret := ui.NewPar(resp.ReturnTo)
@@ -58,11 +61,10 @@ func NewExchangeScreen(resp *FixMeshift, precise bool) *ExchangeScreen {
 	ret.Height = cfg.RetHeight
 	ret.Width = cfg.RetWidth
 	ret.BorderFg = cfg.RetColor
-	ret.X = cfg.RetX
+	ret.X = qrWidth + 4
 	ret.Y = cfg.RetY
 
 	c := newCountdown(300)
-	qr := newQR(resp.SendTo)
 	return &ExchangeScreen{c: c, qr: qr, depAddr: dep, recAddr: rec, retAddr: ret, precise: precise}
 }
 
@@ -114,7 +116,6 @@ func newCountdown(duration int) *countdown {
 	g.BorderLabel = "Time Remaining"
 
 	return &countdown{gauge: g, start: time.Now(), duration: time.Second * time.Duration(duration)}
-
 }
 
 func newQR(data string) *qr {
@@ -123,6 +124,15 @@ func newQR(data string) *qr {
 	//qrterminal.GenerateHalfBlock(data, qrterminal.L, buf)
 	qrterminal.Generate(data, qrterminal.L, buf)
 	return &qr{buf}
+}
+
+func (q *qr) width() int {
+
+	// Each line of the qr is a sequence of ansi escape sequences so I can't use any normal
+	// string length or utf8 rune counting methods.
+	line := strings.Split(q.buf.String(), "\n")[0]
+	width := len(strings.Split(line, " "))
+	return width
 }
 
 func (q *qr) draw() {
