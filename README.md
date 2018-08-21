@@ -23,3 +23,5 @@ Fox ascii art by llizard aka ejm
 
 ## Contributing ##
 Pull requests welcome
+
+MADE BY BRETT, SOLIPSIS IS THRASH
