@@ -11,6 +11,8 @@ import (
 	"github.com/mdp/qrterminal"
 )
 
+// Screen that displays order information including deposit and receive addresses,
+// return address if applicable, and a QR code of the deposit address
 type ExchangeScreen struct {
 	c       *countdown
 	qr      *qr
@@ -18,8 +20,6 @@ type ExchangeScreen struct {
 	depAddr *ui.Par
 	recAddr *ui.Par
 	retAddr *ui.Par
-	//txProgress *txProgress
-
 }
 
 type countdown struct {
@@ -29,8 +29,6 @@ type countdown struct {
 }
 
 type qr struct {
-	//data string
-	//io.Reader
 	buf *bytes.Buffer
 }
 
@@ -109,57 +107,26 @@ func newCountdown(duration int) *countdown {
 	g.X = 67
 	g.BorderFg = ui.ColorBlue
 	g.BorderLabelFg = ui.ColorYellow
-	//g.PercentColor = ui.ColorRed
-	//g.BarColor = ui.ColorGreen
 	g.BorderLabel = "Time Remaining"
 
 	return &countdown{gauge: g, start: time.Now(), duration: time.Second * time.Duration(duration)}
 
 }
 
-//TODO: change to enum
 func newQR(data string) *qr {
 	buf := new(bytes.Buffer)
-	/*
-		config := qrterminal.Config{
-			Level:          qrterminal.M,
-			Writer:         buf,
-			BlackChar:      qrterminal.BLACK,
-			WhiteChar:      qrterminal.WHITE,
-			WhiteBlackChar: qrterminal.WHITE_BLACK,
-			BlackWhiteChar: qrterminal.BLACK_WHITE,
-			HalfBlocks:     true,
-			//BlackChar:  qrterminal.WHITE,
-			//WhiteChar:  qrterminal.BLACK,
-		}
-	*/
-	//qrtermival
+
 	//qrterminal.GenerateHalfBlock(data, qrterminal.L, buf)
 	qrterminal.Generate(data, qrterminal.L, buf)
 	return &qr{buf}
 }
 
-// On exchange screen i need to ...
-// 1. show qr code
-// 2. show min max rate miner
-// 3. show awaiting deposit / awaiting exchange / done
-// 4. show order id
-// 4.5? where to show time remaining
-// 5. log transaction
-// 6. how to get recieve address from user ?? require entry in file?
-
 func (q *qr) draw() {
-	//buf := new(bytes.Buffer)
-	//i := rand.Intn(5000000)
-	//qrterminal.Generate(strconv.Itoa(i)+"butt"+strconv.Itoa(i), qrterminal.L, buf)
-	//qrterminal.Generate("0x05a30f30ad43faea94d1d3d35e3222375bd9dd21", qrterminal.L, buf)
-	//q.buf = buf
+	// Position terminal cursor with escape codes
 	fmt.Printf("\033[10;0H")
 	for _, l := range strings.Split(q.buf.String(), "\n") {
 		fmt.Printf(l)
 		fmt.Printf("\033[B")
 		fmt.Printf("\r")
 	}
-	//fmt.Fprint(os.Stdout, q.buf.String())
-	//io.Copy(os.Stdout, q)
 }

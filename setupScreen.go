@@ -105,7 +105,6 @@ func (s *SetupScreen) amount() (float64, error) {
 }
 
 func (s *SetupScreen) Buffers() []ui.Bufferer {
-	Log.Println("SETUP BUFFERS")
 	bufs := []ui.Bufferer{}
 	bufs = append(bufs, s.help)
 	for _, f := range s.fields {
