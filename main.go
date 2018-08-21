@@ -165,7 +165,7 @@ func (s *state) transitionExchange() state {
 		}()
 	}
 
-	exchangeScreen = NewExchangeScreen(nshift)
+	exchangeScreen = NewExchangeScreen(nshift, precise)
 	ui.Clear()
 	return exchange
 }

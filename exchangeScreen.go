@@ -17,6 +17,7 @@ type ExchangeScreen struct {
 	c       *countdown
 	qr      *qr
 	stats   *pairStats
+	precise bool
 	depAddr *ui.Par
 	recAddr *ui.Par
 	retAddr *ui.Par
@@ -32,7 +33,7 @@ type qr struct {
 	buf *bytes.Buffer
 }
 
-func NewExchangeScreen(resp *FixMeshift) *ExchangeScreen {
+func NewExchangeScreen(resp *FixMeshift, precise bool) *ExchangeScreen {
 
 	cfg := DefaultExchangeConfig
 
@@ -62,7 +63,7 @@ func NewExchangeScreen(resp *FixMeshift) *ExchangeScreen {
 
 	c := newCountdown(300)
 	qr := newQR(resp.SendTo)
-	return &ExchangeScreen{c: c, qr: qr, depAddr: dep, recAddr: rec, retAddr: ret}
+	return &ExchangeScreen{c: c, qr: qr, depAddr: dep, recAddr: rec, retAddr: ret, precise: precise}
 }
 
 func (e *ExchangeScreen) Buffers() []ui.Bufferer {
@@ -70,10 +71,13 @@ func (e *ExchangeScreen) Buffers() []ui.Bufferer {
 	bufs := append([]ui.Bufferer{}, e.depAddr)
 	bufs = append(bufs, e.recAddr)
 	bufs = append(bufs, e.retAddr)
-	return append(bufs, e.c.gauge)
+	if e.precise {
+		bufs = append(bufs, e.c.gauge)
+	}
+	return bufs
 }
 
-// DrawQR muust be called seperately because termui does not accept
+// DrawQR must be called seperately because termui does not accept
 // some of the characters used for the qr code
 func (e *ExchangeScreen) DrawQR() {
 	e.qr.draw()
