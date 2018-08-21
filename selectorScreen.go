@@ -112,7 +112,7 @@ func (p *PairSelectorScreen) Init() {
 }
 
 func (p *PairSelectorScreen) activePair() string {
-	return p.selector.receive.SelectedCoin().Symbol + "_" + p.selector.deposit.SelectedCoin().Symbol
+	return p.selector.deposit.SelectedCoin().Symbol + "_" + p.selector.receive.SelectedCoin().Symbol
 }
 
 func (p *PairSelectorScreen) isPreciseOrder() bool {
