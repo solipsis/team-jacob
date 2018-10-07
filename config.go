@@ -33,7 +33,7 @@ func loadDepositAddresses() map[string]string {
 	return m
 }
 
-// Configuration for the header which includes the logo and fox image
+// HeaderConfig is the configuration for the header which includes the logo and fox image
 type HeaderConfig struct {
 	FoxX, FoxY          int
 	FoxHeight, FoxWidth int
