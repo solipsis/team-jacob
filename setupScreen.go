@@ -2,7 +2,6 @@ package main
 
 import (
 	"strconv"
-	"strings"
 
 	ui "github.com/gizak/termui"
 )
@@ -158,45 +157,45 @@ func (s *SetupScreen) toggle() {
 	}
 }
 
-// Deal with user input on this screen
+// Handle deals with user input on this screen
 func (s *SetupScreen) Handle(e string) {
-
 	// if arrow keys and no selected item, change the selected item
 	if !s.editing {
-		if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
+		if e == "<Up>" || e == "k" {
 			s.changeSelection(-1)
 			return
 		}
-		if e == "/sys/kbd/<down>" || e == "/sys/kbd/j" {
+		if e == "<Down>" || e == "j" {
 			s.changeSelection(1)
 			return
 		}
 	}
 
-	if e == "/sys/kbd/<space>" {
+	if e == "<Space>" {
 		s.toggle()
 		return
 	}
 	current := s.fields[s.selected]
 
 	if s.editing {
-		// All the keys that could be used to "undo"
-		if strings.HasSuffix(e, "<backspace>") || strings.HasSuffix(e, "<delete>") || strings.HasSuffix(e, "C-8") {
+		// All the keys that could be used to "undo" - as of right now github.com/gizak/termui is not
+		// working correctly and backspaces are coming through as "C-8>" - when this is fixed/PR'ed
+		// these conditions as well as what we allow through anyKey in main, can be updated.
+		if e == "<Backspace>" || e == "<Delete>" || e == "C-8>" {
 			if len(current.Text) > 0 {
 				current.Text = current.Text[:len(current.Text)-1]
 			}
 			return
 		}
 
-		arr := strings.Split(e, "/")
-		if len(arr) < 4 || len(arr[3]) > 1 {
+		if len(e) >= 4 {
 			return
 		}
 
 		// append the character to the text
-		current.Text += arr[3]
+		current.Text += e
 	} else {
-		if e == "/sys/kbd/q" {
+		if e == "q" {
 			ui.StopLoop()
 		}
 	}

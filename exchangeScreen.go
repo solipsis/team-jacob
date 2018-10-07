@@ -11,7 +11,7 @@ import (
 	"github.com/mdp/qrterminal"
 )
 
-// Screen that displays order information including deposit and receive addresses,
+// ExchangeScreen displays order information including deposit and receive addresses,
 // return address if applicable, and a QR code of the deposit address
 type ExchangeScreen struct {
 	c       *countdown

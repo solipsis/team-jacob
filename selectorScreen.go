@@ -174,7 +174,7 @@ func (s *PairSelectorScreen) Handle(e string) {
 	Log.Println("Select Input", e)
 
 	// Toggling orderType between quick and precise
-	if e == "/sys/kbd/t" {
+	if e == "t" {
 		if strings.Contains(s.typePar.Text, "Quick") {
 			centerText(s.typePar, "Precise")
 		} else {
@@ -184,25 +184,25 @@ func (s *PairSelectorScreen) Handle(e string) {
 
 	// Deposit and recieve coin selection
 	p := s.selector
-	if e == "/sys/kbd/<up>" || e == "/sys/kbd/k" {
+	if e == "<Up>" || e == "k" {
 		p.active.Prev()
 	}
-	if e == "/sys/kbd/<down>" || e == "/sys/kbd/j" {
+	if e == "<Down>" || e == "j" {
 		p.active.Next()
 	}
-	if e == "/sys/kbd/<right>" || e == "/sys/kbd/l" {
+	if e == "<Right>" || e == "l" {
 		p.active.background.BorderFg = ui.ColorWhite
 		p.active = p.receive
 		p.active.background.BorderFg = ui.ColorRed
 	}
-	if e == "/sys/kbd/<left>" || e == "/sys/kbd/h" {
+	if e == "<Left>" || e == "h" {
 		p.active.background.BorderFg = ui.ColorWhite
 		p.active = p.deposit
 		p.active.background.BorderFg = ui.ColorRed
 	}
 
 	// I'm feeling lucky toggle
-	if e == "/sys/kbd/y" {
+	if e == "y" {
 		if s.luckyTicker == nil {
 			s.luckyTicker = time.NewTicker(100 * time.Millisecond)
 			go func() {

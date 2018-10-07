@@ -1,8 +1,6 @@
 package main
 
 import (
-	"strings"
-
 	ui "github.com/gizak/termui"
 )
 
@@ -34,21 +32,22 @@ func (i *InputScreen) Handle(e string) {
 
 	Log.Println(e)
 
-	// All the keys that could be used to "undo"
-	if strings.HasSuffix(e, "<backspace>") || strings.HasSuffix(e, "<delete>") || strings.HasSuffix(e, "C-8") {
+	// All the keys that could be used to "undo" - as of right now github.com/gizak/termui is not
+	// working correctly and backspaces are coming through as "C-8>" - when this is fixed/PR'ed
+	// these conditions as well as what we allow through anyKey in main, can be updated.
+	if e == "<Backspace>" || e == "<Delete>" || e == "C-8>" {
 		if len(i.input.Text) > 0 {
 			i.input.Text = i.input.Text[:len(i.input.Text)-1]
 		}
 		return
 	}
 
-	arr := strings.Split(e, "/")
-	if len(arr) < 4 || len(arr[3]) > 1 {
+	if len(e) >= 4 {
 		return
 	}
 
 	// append the character to the text
-	i.input.Text += arr[3]
+	i.input.Text += e
 }
 
 func (i *InputScreen) Text() string {

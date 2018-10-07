@@ -173,13 +173,14 @@ func (s *state) transitionExchange() state {
 }
 
 func listenForEvents() {
+	anyKey := []string{
+		"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+		"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+		"1", "2", "3", "4", "5", "6", "7", "8", "9", "<Up>", "<Down>", "<Left>", "<Right>", "<Space>", "<Backspace>", "<Delete>", "C-8>",
+	}
 
 	// Subscribe to keyboard event listeners
-	ui.Handle("/sys/kbd", func(e ui.Event) {
-		Log.Println("ANY KEY", e.Path)
-	})
-
-	ui.Handle("/sys/kbd/<enter>", func(e ui.Event) {
+	ui.Handle("<Enter>", func(e ui.Event) {
 		// TODO: move this logic into their respective screens
 		switch activeState {
 		case selection:
@@ -192,20 +193,21 @@ func listenForEvents() {
 		}
 		draw(0)
 	})
-	ui.Handle("/sys/kbd", func(e ui.Event) {
+
+	ui.Handle(anyKey, func(e ui.Event) {
 		switch activeState {
 		case selection:
-			selectScreen.Handle(e.Path)
+			selectScreen.Handle(e.ID)
 		case setup:
-			setupScreen.Handle(e.Path)
+			setupScreen.Handle(e.ID)
 		}
 		draw(0)
 	})
-	ui.Handle("/sys/kbd/q", func(e ui.Event) {
 
+	ui.Handle("q", func(e ui.Event) {
 		switch activeState {
 		case setup:
-			setupScreen.Handle(e.Path)
+			setupScreen.Handle(e.ID)
 		default:
 			ui.StopLoop()
 		}
@@ -213,8 +215,7 @@ func listenForEvents() {
 	})
 
 	// Redraw if user resizes gui
-	ui.Handle("/sys/wnd/resize", func(e ui.Event) {
+	ui.Handle("<Resize>", func(e ui.Event) {
 		draw(0)
 	})
-
 }
